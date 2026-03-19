@@ -49,10 +49,9 @@ public static class QuestDataStorage
         Dictionary<int, QuestData> quests = new Dictionary<int, QuestData>();
         Dictionary<int, QuestData> patternQuests = new Dictionary<int, QuestData>();
         
-        // Tham số pattern (giống như trong QuestDataGenerator)
         int patternLength = 15;
-        int baseEnergyItems = 3;
-        int energyItemsIncrement = 1;
+        int baseSweetieRescues = 3;
+        int sweetieRescuesIncrement = 1;
         float baseTimeLimit = 120f;
         float timeLimitIncrement = 10f;
         int baseReward1Star = 50;
@@ -67,18 +66,13 @@ public static class QuestDataStorage
             quest.questId = patternLevel;
             quest.objectives = new QuestObjective[0];
             
-            // Tính số điểm EnergyItem (tăng dần từ baseEnergyItems, tối đa 20)
-            int energyPoints = baseEnergyItems + (patternLevel - 1) * energyItemsIncrement;
-            quest.requiredEnergyPoints = Mathf.Min(energyPoints, 20);
+            int sweeties = baseSweetieRescues + (patternLevel - 1) * sweetieRescuesIncrement;
+            quest.requiredSweetieRescues = Mathf.Min(sweeties, 20);
             
-            // Tính Time Limit (tăng dần)
             quest.timeLimit = baseTimeLimit + (patternLevel - 1) * timeLimitIncrement;
-            
-            // Tính thời gian để đạt sao
             quest.timeFor3Stars = quest.timeLimit * 0.4f;
             quest.timeFor2Stars = quest.timeLimit * 0.7f;
             
-            // Tính reward (tăng dần theo level)
             quest.rewardList = new List<int>
             {
                 baseReward1Star + (patternLevel - 1) * rewardIncrement,
@@ -92,20 +86,17 @@ public static class QuestDataStorage
         // Tạo tất cả 50 level bằng cách lặp lại pattern
         for (int level = 1; level <= 50; level++)
         {
-            // Tính level trong pattern (1-15)
             int patternIndex = ((level - 1) % patternLength) + 1;
             QuestData patternQuest = patternQuests[patternIndex];
             
-            // Tạo quest mới với ID là level hiện tại
             QuestData quest = ScriptableObject.CreateInstance<QuestData>();
             quest.questId = level;
             quest.objectives = patternQuest.objectives;
-            quest.requiredEnergyPoints = patternQuest.requiredEnergyPoints;
+            quest.requiredSweetieRescues = patternQuest.requiredSweetieRescues;
             quest.timeLimit = patternQuest.timeLimit;
             quest.timeFor3Stars = patternQuest.timeFor3Stars;
             quest.timeFor2Stars = patternQuest.timeFor2Stars;
             
-            // Reward vẫn tăng dần theo level thực tế
             quest.rewardList = new List<int>
             {
                 baseReward1Star + (level - 1) * rewardIncrement,
@@ -113,7 +104,6 @@ public static class QuestDataStorage
                 baseReward3Star + (level - 1) * rewardIncrement
             };
             
-            // Set locked status: chỉ level 1 unlock, các level khác locked
             quests[level] = quest;
         }
         
@@ -593,10 +583,10 @@ public class QuestDataJSON
     public float timeFor3Stars;
     public float timeFor2Stars;
     public float timeLimit;
-    public int requiredEnergyPoints;
+    public int requiredSweetieRescues;
     public int[] rewardList;
-    public int stars = 0; // Kết quả sao đạt được (0 = chưa hoàn thành, 1-3 = số sao)
-    public bool isLocked = true; // Trạng thái locked (true = bị khóa, false = đã unlock)
+    public int stars = 0;
+    public bool isLocked = true;
     
     public QuestDataJSON() { }
     
@@ -609,10 +599,10 @@ public class QuestDataJSON
         timeFor3Stars = questData.timeFor3Stars;
         timeFor2Stars = questData.timeFor2Stars;
         timeLimit = questData.timeLimit;
-        requiredEnergyPoints = questData.requiredEnergyPoints;
+        requiredSweetieRescues = questData.requiredSweetieRescues;
         rewardList = questData.rewardList != null ? questData.rewardList.ToArray() : new int[] { 50, 100, 150 };
-        stars = 0; // Mặc định chưa có sao
-        isLocked = questId != 1; // Quest đầu tiên không locked, các quest khác locked mặc định
+        stars = 0;
+        isLocked = questId != 1;
     }
     
     public QuestData ToQuestData()
@@ -623,7 +613,7 @@ public class QuestDataJSON
         questData.timeFor3Stars = timeFor3Stars;
         questData.timeFor2Stars = timeFor2Stars;
         questData.timeLimit = timeLimit;
-        questData.requiredEnergyPoints = requiredEnergyPoints;
+        questData.requiredSweetieRescues = requiredSweetieRescues;
         questData.rewardList = rewardList != null ? new List<int>(rewardList) : new List<int> { 50, 100, 150 };
         return questData;
     }

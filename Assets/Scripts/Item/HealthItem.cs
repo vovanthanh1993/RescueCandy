@@ -1,114 +1,88 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
-/// Item tăng mạng (health/life) cho player
+/// Item hồi máu (HP) cho player, bay lên và biến mất khi nhặt.
 /// </summary>
 public class HealthItem : MonoBehaviour
 {
     [Header("Health Settings")]
-    [Tooltip("Số mạng tăng thêm khi nhặt item")]
-    [SerializeField] private int healthAmount = 1;
-    
-    [Header("Visual Settings")]
-    [Tooltip("Effect khi nhặt item (particle, sound, etc.)")]
-    [SerializeField] private GameObject pickupEffect;
-    
-    [Tooltip("Có tự động destroy sau khi nhặt không")]
-    [SerializeField] private bool autoDestroy = true;
-    
-    [Header("Auto Destroy Settings")]
-    [Tooltip("Tự động xóa item sau bao nhiêu giây (0 = không tự động xóa)")]
-    [SerializeField] private float autoDestroyDelay = 10f;
-    
+    [Tooltip("Số máu (HP) hồi khi nhặt item")]
+    [SerializeField] private int healAmount = 20;
+
+    [Header("Fly Up Settings")]
+    [Tooltip("Tốc độ bay lên")]
+    [SerializeField] private float riseSpeed = 8f;
+
+    [Tooltip("Thời gian từ lúc nhặt tới khi biến mất (giây)")]
+    [SerializeField] private float disappearAfterSeconds = 0.6f;
+
     private bool isCollected = false;
-    
-    private void Start()
-    {
-        // Tự động xóa sau một khoảng thời gian nếu được set
-        if (autoDestroyDelay > 0)
-        {
-            Invoke(nameof(AutoDestroy), autoDestroyDelay);
-        }
-    }
-    
-    /// <summary>
-    /// Tự động destroy item sau thời gian delay
-    /// </summary>
-    private void AutoDestroy()
-    {
-        if (!isCollected)
-        {
-            Destroy(gameObject);
-        }
-    }
-    
-    /// <summary>
-    /// Xử lý va chạm với trigger (nếu item là trigger)
-    /// </summary>
+
     private void OnTriggerEnter(Collider other)
     {
-        // Chỉ player mới nhặt được
-        if (isCollected || !other.CompareTag("Player"))
-            return;
-        
+        if (isCollected || other == null) return;
+        if (!other.CompareTag("Player")) return;
+
         PlayerController player = other.GetComponent<PlayerController>();
-        if (player != null)
-        {
-            CollectHealthItem(player);
-        }
+        if (player == null) return;
+
+        CollectHealthItem(player);
     }
-    
-    /// <summary>
-    /// Xử lý khi player nhặt health item
-    /// </summary>
+
     private void CollectHealthItem(PlayerController player)
     {
-        if (isCollected)
-            return;
-        
+        if (isCollected) return;
         isCollected = true;
-        
-        // Tăng mạng cho player
-        if (HealthPanel.Instance != null)
+
+        foreach (var c in GetComponentsInChildren<Collider>())
+            c.enabled = false;
+
+        transform.SetParent(null);
+
+        var itemScript = GetComponent<Item>();
+        if (itemScript != null)
+            itemScript.enabled = false;
+
+        if (PlayerHealth.Instance != null)
         {
-            HealthPanel.Instance.AddLife(healthAmount);
-            Debug.Log($"HealthItem: Đã tăng {healthAmount} mạng cho player");
+            PlayerHealth.Instance.Heal(healAmount);
         }
-        else
-        {
-            Debug.LogWarning("HealthItem: HealthPanel.Instance không tồn tại!");
-        }
-        
-        // Spawn VFX tại player's VFX point
+
         if (player != null)
         {
             player.SpawnHealthPickupVFX();
         }
-        
-        // Phát effect nếu có (tại vị trí item)
-        if (pickupEffect != null)
-        {
-            Instantiate(pickupEffect, transform.position, Quaternion.identity);
-        }
-        
-        // Phát sound nếu có
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayHealSound();
         }
-        
-        // Hủy auto destroy nếu đã nhặt
-        CancelInvoke(nameof(AutoDestroy));
-        
-        // Destroy hoặc disable item
-        if (autoDestroy)
+
+        StartCoroutine(FlyUpAndDisappear());
+    }
+
+    private IEnumerator FlyUpAndDisappear()
+    {
+        float t = 0f;
+        float duration = Mathf.Max(0.01f, disappearAfterSeconds);
+        Vector3 origin = transform.position;
+        Vector3 originScale = transform.localScale;
+
+        while (t < duration)
         {
-            Destroy(gameObject);
+            float dt = Time.deltaTime;
+            t += dt;
+
+            float y = origin.y + riseSpeed * t;
+            transform.position = new Vector3(origin.x, y, origin.z);
+
+            float normalized = 1f - Mathf.Clamp01(t / duration);
+            transform.localScale = originScale * normalized;
+
+            yield return null;
         }
-        else
-        {
-            gameObject.SetActive(false);
-        }
+
+        Destroy(gameObject);
     }
 }
-

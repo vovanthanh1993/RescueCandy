@@ -66,10 +66,9 @@ public class HealthPanel : MonoBehaviour
         currentLives--;
         UpdateHealthDisplay();
 
-        // Nếu hết mạng, hiển thị lose panel
+        // Nếu hết mạng, trả false để caller xử lý UI (tránh show panel ngay trong HealthPanel)
         if (currentLives <= 0)
         {
-            ShowLosePanel();
             return false;
         }
 

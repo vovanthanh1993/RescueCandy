@@ -7,7 +7,6 @@ public class PlayerController : MonoBehaviour
 
     [Header("Movement Settings")]
     [SerializeField] private CharacterController characterController;
-    [SerializeField] private GameObject model;
     [SerializeField] private float moveSpeed = 3f;
     [SerializeField] private float rotationSpeed = 10f;
     
@@ -59,7 +58,7 @@ public class PlayerController : MonoBehaviour
     
     [Header("Input Control")]
     [Tooltip("Cho phép nhận input từ người chơi hay không")]
-    [SerializeField] private bool canReceiveInput = false;
+    [SerializeField] private bool canReceiveInput = true;
     [SerializeField] private bool isDisable = false;
     
     // Components
@@ -76,6 +75,17 @@ public class PlayerController : MonoBehaviour
     
     [Tooltip("Thời gian chờ death animation trước khi spawn lại (giây)")]
     [SerializeField] private float deathAnimationDuration = 1f;
+
+    [Header("Game Over Settings")]
+    [Tooltip("Timeout dự phòng (giây) khi chờ animation Die kết thúc để hiện bảng thua")]
+    [SerializeField] private float gameOverDelay = 2f;
+    private bool isGameOver = false;
+
+    [Tooltip("Tên state Death/Die trong Animator (phải khớp đúng tên state)")]
+    [SerializeField] private string dieStateName = "Die";
+
+    [Tooltip("Animator layer chứa state Die (thường 0)")]
+    [SerializeField] private int dieAnimatorLayer = 0;
     
     [Header("Pickup VFX Settings")]
     [Tooltip("Vị trí spawn VFX khi nhặt item (health, speed)")]
@@ -489,29 +499,9 @@ public class PlayerController : MonoBehaviour
     /// <param name="playExplosionSound">Có phát âm thanh nổ không</param>
     private void TakeDamage(bool playExplosionSound)
     {
-        // Disable input ngay lập tức để player không thể di chuyển thêm
-        canReceiveInput = false;
-        
-        // Dừng movement ngay lập tức
-        SetIdleAnimation();
-        
-        // Trigger death animation
-        if (playerAnimation != null)
-        {
-            playerAnimation.SetDie();
-        }
-        
-        // Nếu đang mang item, cho item bay về vị trí ban đầu
-        if (carriedItem != null)
-        {
-            carriedItem.ReturnToOriginalPosition();
-            carriedItem = null; // Reset carried item
-        }
-        
-        // Chờ death animation xong rồi mới spawn lại
-        StartCoroutine(HandleDeathAnimation(playExplosionSound));
-        
-        Debug.LogWarning($"PlayerController: Player bị trúng damage! Chết và sẽ spawn lại. PlayExplosionSound: {playExplosionSound}");
+        // Khi không còn cơ chế "3 mạng" nữa: hết máu thì thua game.
+        // Các damage nguồn (fireball/laser/boom) hiện đều đẩy vào game over flow thống nhất.
+        TriggerDieAndGameOver(playExplosionSound);
     }
     
     /// <summary>
@@ -519,29 +509,86 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void TakeBoomDamage()
     {
-        // Disable input ngay lập tức để player không thể di chuyển thêm
+        // BoomItem gây chết ngay lập tức (không còn 3 mạng)
+        TriggerDieAndGameOver(playExplosionSound: true);
+    }
+
+    /// <summary>
+    /// Gọi khi player chết do hết HP (không dùng cơ chế 3 mạng nữa).
+    /// </summary>
+    public void DieFromHPZero()
+    {
+        TriggerDieAndGameOver(playExplosionSound: false);
+    }
+
+    private void TriggerDieAndGameOver(bool playExplosionSound)
+    {
+        if (isGameOver) return;
+        isGameOver = true;
+
+        // Dừng mọi coroutine đang chạy (để tránh spawn/logic cũ)
+        StopAllCoroutines();
+
+        // Disable input ngay lập tức
         canReceiveInput = false;
-        
-        // Dừng movement ngay lập tức
-        SetIdleAnimation();
-        
-        // Trigger death animation
-        if (playerAnimation != null)
+        isDisable = true;
+
+        // Dừng movement
+        if (characterController != null)
         {
-            playerAnimation.SetDie();
+            characterController.enabled = false;
         }
-        
+
+        // Tắt movement animation và trigger die animation
+        SetIdleAnimation();
+        playerAnimation?.SetDie();
+
         // Nếu đang mang item, cho item bay về vị trí ban đầu
         if (carriedItem != null)
         {
             carriedItem.ReturnToOriginalPosition();
-            carriedItem = null; // Reset carried item
+            carriedItem = null;
         }
-        
-        // Chờ death animation xong rồi mới spawn lại
-        StartCoroutine(HandleBoomDeath());
-        
-        Debug.LogWarning("PlayerController: Player chạm vào BoomItem! Chết và sẽ spawn lại.");
+
+        if (playExplosionSound && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayExplosion();
+        }
+
+        StartCoroutine(HandleGameOverAfterDieAnimation());
+    }
+
+    private System.Collections.IEnumerator HandleGameOverAfterDieAnimation()
+    {
+        Animator anim = playerAnimation != null ? playerAnimation.animator : null;
+
+        float timeoutTime = Time.time + Mathf.Max(0.01f, gameOverDelay);
+
+        // Nếu không có Animator/state name thì fallback theo delay
+        if (anim == null || string.IsNullOrEmpty(dieStateName))
+        {
+            yield return new WaitForSecondsRealtime(Mathf.Max(0f, gameOverDelay));
+        }
+        else
+        {
+            // Chờ Animator vào state die
+            while (Time.time < timeoutTime && !anim.GetCurrentAnimatorStateInfo(dieAnimatorLayer).IsName(dieStateName))
+            {
+                yield return null;
+            }
+
+            // Chờ state die chạy xong (thoát khỏi state)
+            while (Time.time < timeoutTime && anim.GetCurrentAnimatorStateInfo(dieAnimatorLayer).IsName(dieStateName))
+            {
+                yield return null;
+            }
+        }
+
+        if (UIManager.Instance != null && UIManager.Instance.gamePlayPanel != null)
+        {
+            UIManager.Instance.gamePlayPanel.ShowLosePanel(true);
+            Time.timeScale = 0f;
+        }
     }
     
     /// <summary>
@@ -759,15 +806,22 @@ public class PlayerController : MonoBehaviour
         // Va chạm với cổng kết thúc (EndTag) bằng collider thường (không phải trigger)
         if (hit.collider != null && hit.collider.CompareTag("EndTag"))
         {
-            // Chỉ cho qua màn nếu đã nhặt đủ EnergyItem (nếu level có yêu cầu)
-            if (LevelManager.Instance == null || LevelManager.Instance.HasCollectedEnoughEnergy())
+            int rescued = LevelManager.Instance != null ? LevelManager.Instance.GetRescuedSweetieCount() : -1;
+            int required = LevelManager.Instance != null ? LevelManager.Instance.GetRequiredSweetieRescuesForCurrentLevel() : -1;
+            bool enough = LevelManager.Instance == null || LevelManager.Instance.HasRescuedEnoughSweeties();
+            Debug.Log($"PlayerController: EndTag hit! rescued={rescued}, required={required}, enough={enough}, LevelManager={LevelManager.Instance != null}, QuestManager={QuestManager.Instance != null}");
+
+            if (enough)
             {
                 ShowVictory();
             }
             else
             {
-                Debug.Log("PlayerController: Chưa nhặt đủ EnergyItem để qua màn (collision)!");
-                // TODO: Có thể hiển thị UI thông báo ở đây (popup, text, v.v.)
+                string msg = $"Cần giải cứu thêm Sweetie! ({rescued}/{required})";
+                if (UIManager.Instance != null && UIManager.Instance.noticePanel != null)
+                {
+                    UIManager.Instance.noticePanel.Init(msg);
+                }
             }
         }
 
@@ -794,6 +848,53 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other == null || isGameOver || isReturningToSpawn) return;
+
+        if (other.CompareTag("Limit"))
+        {
+            HandleLimitHit();
+        }
+    }
+
+    [Header("Limit Settings")]
+    [Tooltip("Số máu bị trừ khi chạm vùng Limit")]
+    [SerializeField] private int limitDamage = 20;
+
+    private void HandleLimitHit()
+    {
+        if (isReturningToSpawn) return;
+
+        PlayerHealth playerHealth = GetComponent<PlayerHealth>();
+        if (playerHealth == null) return;
+
+        playerHealth.TakeDamage(limitDamage);
+
+        if (playerHealth.CurrentHealth > 0)
+        {
+            isReturningToSpawn = true;
+            lastSpawnReturnTime = Time.time;
+
+            canReceiveInput = false;
+
+            if (characterController != null)
+                characterController.enabled = false;
+
+            Vector3 targetPosition = spawnPoint != null ? spawnPoint.position : initialSpawnPosition;
+            transform.position = targetPosition;
+
+            if (characterController != null)
+                characterController.enabled = true;
+
+            verticalVelocity = 0f;
+            SetIdleAnimation();
+
+            StartCoroutine(EnableInputAfterSpawn());
+            StartCoroutine(ResetSpawnReturnFlag());
+        }
+    }
+
     /// <summary>
     /// Lượm item (chỉ lượm được 1 item) - được gọi từ Item
     /// </summary>
@@ -1067,11 +1168,6 @@ public class PlayerController : MonoBehaviour
     {
         // Set movement to idle (speed = 0)
         playerAnimation?.SetMovement(false, 0f);
-    }
-
-    public GameObject GetModel()
-    {
-        return model;
     }
 
     /// <summary>

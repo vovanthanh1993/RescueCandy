@@ -57,8 +57,7 @@ public class QuestManager : MonoBehaviour
         }
         else
         {
-                // Không có objectives (chỉ cần nhặt EnergyItem)
-                Debug.Log($"QuestManager: Level {currentQuest.questId} chỉ cần nhặt {currentQuest.requiredEnergyPoints} điểm EnergyItem");
+                Debug.Log($"QuestManager: Level {currentQuest.questId} cần giải cứu {currentQuest.requiredSweetieRescues} Sweetie");
             }
         }
         else
@@ -112,23 +111,6 @@ public class QuestManager : MonoBehaviour
         if (!questCompleted)
         {
             gameElapsedTime = Time.time - gameStartTime;
-            
-            // Kiểm tra thời gian giới hạn
-            if (currentQuest != null && currentQuest.timeLimit > 0)
-            {
-                // Nếu hết thời gian và quest chưa hoàn thành (chưa trigger với EndTag) thì thua
-                if (gameElapsedTime >= currentQuest.timeLimit)
-                {
-                    // Kiểm tra lại questCompleted một lần nữa để tránh race condition
-                    // (nếu player vừa trigger EndTag trong cùng frame này)
-                    if (!questCompleted)
-                    {
-                        // Hết thời gian và chưa trigger với EndTag -> thua
-                        OnTimeLimitReached();
-                        return;
-                    }
-                }
-            }
         }
         
         if (GUIPanel.Instance != null)
@@ -137,28 +119,6 @@ public class QuestManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Xử lý khi hết thời gian giới hạn - thua ngay lập tức
-    /// </summary>
-    private void OnTimeLimitReached()
-    {
-        // Kiểm tra để tránh gọi nhiều lần
-        if (questCompleted)
-            return;
-        
-        // Set questCompleted = true ngay để tránh gọi nhiều lần
-        questCompleted = true;
-        
-        Debug.LogWarning($"QuestManager: Hết thời gian giới hạn ({currentQuest.timeLimit}s) - Thua!");
-        
-        // Hiển thị lose panel
-        if (UIManager.Instance != null && UIManager.Instance.gamePlayPanel != null)
-        {
-            UIManager.Instance.gamePlayPanel.ShowLosePanel(true);
-            Time.timeScale = 0f;
-        }
-    }
-
     /// <summary>
     /// Được gọi khi player thả item tại checkpoint
     /// </summary>
@@ -199,20 +159,10 @@ public class QuestManager : MonoBehaviour
         if (questCompleted)
             return;
 
-        // Kiểm tra nếu có objectives (quest cũ)
-        if (currentQuest.objectives != null && currentQuest.objectives.Length > 0)
+        // Kiểm tra Sweetie rescue
+        if (currentQuest.requiredSweetieRescues > 0)
         {
-        foreach (var obj in currentQuest.objectives)
-        {
-            // Check item objectives
-            if (!progress.ContainsKey(obj.itemType) || progress[obj.itemType] < obj.requiredAmount)
-                    return;
-            }
-        }
-        // Nếu không có objectives, kiểm tra EnergyItem (quest mới)
-        else if (currentQuest.requiredEnergyPoints > 0)
-        {
-            if (LevelManager.Instance == null || !LevelManager.Instance.HasCollectedEnoughEnergy())
+            if (LevelManager.Instance == null || !LevelManager.Instance.HasRescuedEnoughSweeties())
                 return;
         }
 
@@ -242,37 +192,21 @@ public class QuestManager : MonoBehaviour
     /// </summary>
     public void CheckAndCompleteQuest()
     {
+        Debug.Log($"QuestManager.CheckAndCompleteQuest: questCompleted={questCompleted}, currentQuest={currentQuest != null}, requiredSweetieRescues={currentQuest?.requiredSweetieRescues}");
+
         if (questCompleted)
             return;
         
         bool canComplete = false;
-        
-        // Kiểm tra nếu có objectives (quest cũ)
-        if (currentQuest.objectives != null && currentQuest.objectives.Length > 0)
+
+        if (currentQuest.requiredSweetieRescues > 0)
         {
-        // Kiểm tra xem đã collect đủ tất cả items chưa
-        bool allObjectivesCompleted = true;
-        foreach (var obj in currentQuest.objectives)
-        {
-            if (!progress.ContainsKey(obj.itemType) || progress[obj.itemType] < obj.requiredAmount)
-            {
-                allObjectivesCompleted = false;
-                break;
-            }
-        }
-            canComplete = allObjectivesCompleted;
-        }
-        // Nếu không có objectives, kiểm tra EnergyItem (quest mới)
-        else if (currentQuest.requiredEnergyPoints > 0)
-        {
-            if (LevelManager.Instance != null && LevelManager.Instance.HasCollectedEnoughEnergy())
-            {
-                canComplete = true;
-            }
+            bool hasEnough = LevelManager.Instance != null && LevelManager.Instance.HasRescuedEnoughSweeties();
+            Debug.Log($"QuestManager: requiredSweetieRescues={currentQuest.requiredSweetieRescues}, hasEnough={hasEnough}, LevelManager={LevelManager.Instance != null}");
+            canComplete = hasEnough;
         }
         else
         {
-            // Không có yêu cầu gì, cho phép hoàn thành
             canComplete = true;
         }
         
@@ -283,9 +217,12 @@ public class QuestManager : MonoBehaviour
         }
         else
         {
-            // Chưa đủ, hiển thị thông báo
-            Debug.Log("Chưa collect đủ items hoặc EnergyItem! Vui lòng collect đủ trước khi đến endgate.");
-            // Có thể hiển thị UI thông báo ở đây nếu cần
+            if (LevelManager.Instance != null)
+            {
+                int rescued = LevelManager.Instance.GetRescuedSweetieCount();
+                int required = LevelManager.Instance.GetRequiredSweetieRescuesForCurrentLevel();
+                Debug.Log($"Cần giải cứu thêm Sweetie! ({rescued}/{required})");
+            }
         }
     }
     
@@ -375,27 +312,13 @@ public class QuestManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Lấy thời gian còn lại dưới dạng chuỗi định dạng (MM:SS) - Countdown
+    /// Lấy thời gian game đã trôi qua dưới dạng chuỗi định dạng (MM:SS)
     /// </summary>
     public string GetGameTimeFormatted()
     {
-        // Nếu có timeLimit, hiển thị thời gian còn lại (countdown)
-        if (currentQuest != null && currentQuest.timeLimit > 0)
-        {
-            float remainingTime = currentQuest.timeLimit - gameElapsedTime;
-            remainingTime = Mathf.Max(0f, remainingTime); // Đảm bảo không âm
-            
-            int minutes = Mathf.FloorToInt(remainingTime / 60f);
-            int seconds = Mathf.FloorToInt(remainingTime % 60f);
-            return string.Format("{0:00}:{1:00}", minutes, seconds);
-        }
-        else
-        {
-            // Nếu không có timeLimit, hiển thị thời gian đã trôi qua (tăng dần)
         int minutes = Mathf.FloorToInt(gameElapsedTime / 60f);
         int seconds = Mathf.FloorToInt(gameElapsedTime % 60f);
         return string.Format("{0:00}:{1:00}", minutes, seconds);
-        }
     }
 
     /// <summary>

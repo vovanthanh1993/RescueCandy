@@ -1,10 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class PlayerHealthFillUI : MonoBehaviour
 {
     [Tooltip("Image Fill (Image Type = Filled)")]
     [SerializeField] private Image fillImage;
+
+    [Tooltip("Text hiển thị current/max HP")]
+    [SerializeField] private TextMeshProUGUI healthText;
 
     [Tooltip("Nếu để trống sẽ dùng PlayerHealth.Instance")]
     [SerializeField] private PlayerHealth playerHealth;
@@ -82,10 +86,16 @@ public class PlayerHealthFillUI : MonoBehaviour
 
     private void UpdateFill(int current, int max)
     {
-        if (fillImage == null) return;
+        if (fillImage != null)
+        {
+            float ratio = max <= 0 ? 0f : (float)current / max;
+            fillImage.fillAmount = Mathf.Clamp01(ratio);
+        }
 
-        float ratio = max <= 0 ? 0f : (float)current / max;
-        fillImage.fillAmount = Mathf.Clamp01(ratio);
+        if (healthText != null)
+        {
+            healthText.text = $"{current}/{max}";
+        }
     }
 }
 

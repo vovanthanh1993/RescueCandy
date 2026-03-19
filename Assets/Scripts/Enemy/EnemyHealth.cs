@@ -4,6 +4,7 @@ public class EnemyHealth : MonoBehaviour
 {
     [SerializeField] private int maxHealth = 50;
     [SerializeField] private int currentHealth = 50;
+    [SerializeField] private GameObject healthBarRoot;
 
     [Header("Die Animation")]
     [SerializeField] private Animator animator;
@@ -13,9 +14,11 @@ public class EnemyHealth : MonoBehaviour
 
     public int MaxHealth => maxHealth;
     public int CurrentHealth => currentHealth;
+    public System.Action<int, int> OnHealthChanged; // (current, max)
 
     private bool isDead = false;
     private bool isDestroyed = false;
+    private EnemyHitFlash hitFlash;
 
     private void Awake()
     {
@@ -24,9 +27,21 @@ public class EnemyHealth : MonoBehaviour
             animator = GetComponentInChildren<Animator>();
         }
 
+        hitFlash = GetComponentInChildren<EnemyHitFlash>();
+
+        if (healthBarRoot == null)
+        {
+            Canvas canvas = GetComponentInChildren<Canvas>();
+            if (canvas != null)
+            {
+                healthBarRoot = canvas.gameObject;
+            }
+        }
+
         maxHealth = Mathf.Clamp(maxHealth, 1, int.MaxValue);
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
         if (currentHealth == 0) currentHealth = maxHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
     public void TakeDamage(int damage)
@@ -35,6 +50,8 @@ public class EnemyHealth : MonoBehaviour
         if (currentHealth <= 0 || isDead) return;
 
         currentHealth = Mathf.Max(0, currentHealth - damage);
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        hitFlash?.Flash();
 
         if (currentHealth <= 0)
         {
@@ -46,6 +63,12 @@ public class EnemyHealth : MonoBehaviour
     {
         if (isDead) return;
         isDead = true;
+
+        // Ẩn thanh máu ngay khi chết
+        if (healthBarRoot != null)
+        {
+            healthBarRoot.SetActive(false);
+        }
 
         // Tắt AI nếu có
         EnemyAI ai = GetComponent<EnemyAI>();

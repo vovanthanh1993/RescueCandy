@@ -20,7 +20,6 @@ public class UIManager : MonoBehaviour
 
     public SettingPanel settingPanel;
 
-    public GameObject characterSelectPanel;
 
     private void Awake()
     {
@@ -86,10 +85,6 @@ public class UIManager : MonoBehaviour
         homePanel.gameObject.SetActive(false);
         noticePanel.gameObject.SetActive(false);
         settingPanel.gameObject.SetActive(false);
-        if (characterSelectPanel != null)
-        {
-            characterSelectPanel.SetActive(false);
-        }
     }
     
     private void Update()
@@ -196,10 +191,4 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void ShowCharacterSelectPanel(bool isShow) {
-        if (characterSelectPanel != null)
-        {
-            characterSelectPanel.SetActive(isShow);
-        }
-    }
 }

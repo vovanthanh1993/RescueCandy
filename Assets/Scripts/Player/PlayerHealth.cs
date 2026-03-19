@@ -8,6 +8,8 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private int currentHealth = 100;
     [SerializeField] private float hurtSoundCooldown = 0.15f;
 
+    private PlayerHitFlash hitFlash;
+
     public int MaxHealth => maxHealth;
     public int CurrentHealth => currentHealth;
     public System.Action<int, int> OnHealthChanged; // (current, max)
@@ -23,6 +25,8 @@ public class PlayerHealth : MonoBehaviour
         }
 
         Instance = this;
+
+        hitFlash = GetComponentInChildren<PlayerHitFlash>();
     }
 
     private void Start()
@@ -46,6 +50,9 @@ public class PlayerHealth : MonoBehaviour
         currentHealth = Mathf.Max(0, currentHealth - damage);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
+        // Hiệu ứng chớp đỏ khi bị đánh trúng
+        hitFlash?.Flash();
+
         // SFX: player hurt (chống spam nếu dính nhiều hit liên tục)
         if (AudioManager.Instance != null && Time.time - lastHurtSoundTime >= hurtSoundCooldown)
         {
@@ -55,11 +62,23 @@ public class PlayerHealth : MonoBehaviour
 
         if (currentHealth <= 0)
         {
-            // Dùng flow chết/respawn hiện có của project
             if (PlayerController.Instance != null)
             {
-                PlayerController.Instance.TakeBoomDamage();
+                // Không còn "3 mạng": hết máu thì thua game
+                PlayerController.Instance.DieFromHPZero();
             }
         }
+    }
+
+    public void Heal(int amount)
+    {
+        if (amount <= 0) return;
+
+        maxHealth = Mathf.Clamp(maxHealth, 1, int.MaxValue);
+        int newHealth = Mathf.Min(maxHealth, currentHealth + amount);
+        if (newHealth == currentHealth) return;
+
+        currentHealth = newHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 }

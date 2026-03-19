@@ -23,17 +23,16 @@ public class QuestDataGenerator : EditorWindow
     private int startLevel = 1;
     private int endLevel = 50;
     
-    // Cấu hình độ khó tăng dần
-    private int baseEnergyItems = 3; // Level 1 cần 3 điểm EnergyItem
-    private int energyItemsIncrement = 2; // Mỗi level tăng thêm 2 điểm
+    private int baseSweetieRescues = 3;
+    private int sweetieRescuesIncrement = 1;
     
-    private float baseTimeLimit = 120f; // Level 1 có 120 giây
-    private float timeLimitIncrement = 30f; // Mỗi level tăng thêm 30 giây
+    private float baseTimeLimit = 120f;
+    private float timeLimitIncrement = 30f;
     
     private int baseReward1Star = 50;
     private int baseReward2Star = 100;
     private int baseReward3Star = 150;
-    private int rewardIncrement = 25; // Mỗi level tăng thêm 25 reward
+    private int rewardIncrement = 25;
     
     private void OnGUI()
     {
@@ -44,9 +43,9 @@ public class QuestDataGenerator : EditorWindow
         endLevel = EditorGUILayout.IntField("End Level", endLevel);
         
         GUILayout.Space(10);
-        GUILayout.Label("Energy Points Settings", EditorStyles.boldLabel);
-        baseEnergyItems = EditorGUILayout.IntField("Base Energy Points (Level 1)", baseEnergyItems);
-        energyItemsIncrement = EditorGUILayout.IntField("Energy Points Increment Per Level", energyItemsIncrement);
+        GUILayout.Label("Sweetie Rescue Settings", EditorStyles.boldLabel);
+        baseSweetieRescues = EditorGUILayout.IntField("Base Sweetie Rescues (Level 1)", baseSweetieRescues);
+        sweetieRescuesIncrement = EditorGUILayout.IntField("Sweetie Increment Per Level", sweetieRescuesIncrement);
         
         GUILayout.Space(10);
         GUILayout.Label("Time Limit Settings", EditorStyles.boldLabel);
@@ -72,10 +71,9 @@ public class QuestDataGenerator : EditorWindow
         EditorGUILayout.HelpBox(
             "Script này sẽ tạo quest data cho các level từ " + startLevel + " đến " + endLevel + 
             " với:\n" +
-            "- Energy Points tăng dần (điểm số, không phải số lượng item)\n" +
+            "- Số Sweetie cần giải cứu tăng dần\n" +
             "- Time Limit tăng dần\n" +
-            "- Reward tăng dần\n" +
-            "- Không có objectives (chỉ cần nhặt đủ điểm EnergyItem)",
+            "- Reward tăng dần",
             MessageType.Info
         );
     }
@@ -84,7 +82,7 @@ public class QuestDataGenerator : EditorWindow
     {
         GenerateQuestDataStatic(
             startLevel, endLevel,
-            baseEnergyItems, energyItemsIncrement,
+            baseSweetieRescues, sweetieRescuesIncrement,
             baseTimeLimit, timeLimitIncrement,
             baseReward1Star, baseReward2Star, baseReward3Star, rewardIncrement
         );
@@ -92,7 +90,7 @@ public class QuestDataGenerator : EditorWindow
     
     private static void GenerateQuestDataStatic(
         int startLevel, int endLevel,
-        int baseEnergyItems, int energyItemsIncrement,
+        int baseSweetieRescues, int sweetieRescuesIncrement,
         float baseTimeLimit, float timeLimitIncrement,
         int baseReward1Star, int baseReward2Star, int baseReward3Star, int rewardIncrement)
     {
@@ -102,24 +100,13 @@ public class QuestDataGenerator : EditorWindow
         {
             QuestData quest = ScriptableObject.CreateInstance<QuestData>();
             quest.questId = level;
-            
-            // Không có objectives (chỉ cần nhặt EnergyItem)
             quest.objectives = new QuestObjective[0];
+            quest.requiredSweetieRescues = baseSweetieRescues + (level - 1) * sweetieRescuesIncrement;
             
-            // Tính số điểm EnergyItem cần nhặt (tăng dần)
-            quest.requiredEnergyPoints = baseEnergyItems + (level - 1) * energyItemsIncrement;
-            
-            // Tính Time Limit (tăng dần)
             quest.timeLimit = baseTimeLimit + (level - 1) * timeLimitIncrement;
-            
-            // Tính thời gian để đạt sao (dựa trên timeLimit)
-            // 3 sao = hoàn thành trong 40% thời gian
-            // 2 sao = hoàn thành trong 70% thời gian
-            // 1 sao = hoàn thành trong timeLimit
             quest.timeFor3Stars = quest.timeLimit * 0.4f;
             quest.timeFor2Stars = quest.timeLimit * 0.7f;
             
-            // Tính reward (tăng dần theo level)
             quest.rewardList = new List<int>
             {
                 baseReward1Star + (level - 1) * rewardIncrement,
@@ -130,7 +117,6 @@ public class QuestDataGenerator : EditorWindow
             quests[level] = quest;
         }
         
-        // Lưu vào JSON
         QuestDataStorage.SaveAllQuests(quests);
         
         Debug.Log($"QuestDataGenerator: Đã tạo quest data cho {quests.Count} levels (từ level {startLevel} đến {endLevel})");
@@ -138,42 +124,34 @@ public class QuestDataGenerator : EditorWindow
         EditorUtility.DisplayDialog(
             "Success",
             $"Đã tạo quest data cho {quests.Count} levels!\n" +
+            $"Sweetie Rescues: {baseSweetieRescues} → tăng dần\n" +
             $"File được lưu tại: {QuestDataStorage.GetQuestFilePath()}",
             "OK"
         );
     }
     
-    /// <summary>
-    /// Generate quest data với pattern lặp lại: tạo 15 level đầu, sau đó lặp lại pattern đó
-    /// </summary>
     private static void GenerateQuestDataWithPattern(
         int startLevel, int endLevel,
-        int patternLength, int baseEnergyItems, int energyItemsIncrement,
+        int patternLength, int baseSweetieRescues, int sweetieRescuesIncrement,
         float baseTimeLimit, float timeLimitIncrement,
         int baseReward1Star, int baseReward2Star, int baseReward3Star, int rewardIncrement)
     {
         Dictionary<int, QuestData> quests = new Dictionary<int, QuestData>();
         Dictionary<int, QuestData> patternQuests = new Dictionary<int, QuestData>();
         
-        // Tạo pattern cho 15 level đầu
         for (int patternLevel = 1; patternLevel <= patternLength; patternLevel++)
         {
             QuestData quest = ScriptableObject.CreateInstance<QuestData>();
             quest.questId = patternLevel;
             quest.objectives = new QuestObjective[0];
             
-            // Tính số điểm EnergyItem (tăng dần từ baseEnergyItems, tối đa 20)
-            int energyPoints = baseEnergyItems + (patternLevel - 1) * energyItemsIncrement;
-            quest.requiredEnergyPoints = Mathf.Min(energyPoints, 20); // Tối đa 20 điểm
+            int sweeties = baseSweetieRescues + (patternLevel - 1) * sweetieRescuesIncrement;
+            quest.requiredSweetieRescues = Mathf.Min(sweeties, 20);
             
-            // Tính Time Limit (tăng dần)
             quest.timeLimit = baseTimeLimit + (patternLevel - 1) * timeLimitIncrement;
-            
-            // Tính thời gian để đạt sao
             quest.timeFor3Stars = quest.timeLimit * 0.4f;
             quest.timeFor2Stars = quest.timeLimit * 0.7f;
             
-            // Tính reward (tăng dần theo level)
             quest.rewardList = new List<int>
             {
                 baseReward1Star + (patternLevel - 1) * rewardIncrement,
@@ -184,23 +162,19 @@ public class QuestDataGenerator : EditorWindow
             patternQuests[patternLevel] = quest;
         }
         
-        // Tạo tất cả các level bằng cách lặp lại pattern
         for (int level = startLevel; level <= endLevel; level++)
         {
-            // Tính level trong pattern (1-15)
             int patternIndex = ((level - 1) % patternLength) + 1;
             QuestData patternQuest = patternQuests[patternIndex];
             
-            // Tạo quest mới với ID là level hiện tại
             QuestData quest = ScriptableObject.CreateInstance<QuestData>();
             quest.questId = level;
             quest.objectives = patternQuest.objectives;
-            quest.requiredEnergyPoints = patternQuest.requiredEnergyPoints;
+            quest.requiredSweetieRescues = patternQuest.requiredSweetieRescues;
             quest.timeLimit = patternQuest.timeLimit;
             quest.timeFor3Stars = patternQuest.timeFor3Stars;
             quest.timeFor2Stars = patternQuest.timeFor2Stars;
             
-            // Reward vẫn tăng dần theo level thực tế
             quest.rewardList = new List<int>
             {
                 baseReward1Star + (level - 1) * rewardIncrement,
@@ -211,17 +185,14 @@ public class QuestDataGenerator : EditorWindow
             quests[level] = quest;
         }
         
-        // Lưu vào JSON
         QuestDataStorage.SaveAllQuests(quests);
         
-        Debug.Log($"QuestDataGenerator: Đã tạo quest data cho {quests.Count} levels (từ level {startLevel} đến {endLevel})");
-        Debug.Log($"QuestDataGenerator: Pattern lặp lại mỗi {patternLength} level, từ {baseEnergyItems} đến tối đa 20 điểm Energy");
-        
+        Debug.Log($"QuestDataGenerator: Đã tạo quest data cho {quests.Count} levels");
+
         EditorUtility.DisplayDialog(
             "Success",
             $"Đã tạo quest data cho {quests.Count} levels!\n" +
-            $"Pattern: {patternLength} level đầu, sau đó lặp lại\n" +
-            $"Energy Points: {baseEnergyItems} → 20 (tối đa)\n" +
+            $"Pattern: {patternLength} level, Sweetie: {baseSweetieRescues} → tối đa 20\n" +
             $"File được lưu tại: {QuestDataStorage.GetQuestFilePath()}",
             "OK"
         );

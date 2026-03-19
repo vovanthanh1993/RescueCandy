@@ -4,22 +4,13 @@ using UnityEngine.SceneManagement;
 using TMPro;
 public class HomePanel : MonoBehaviour
 {
-    public Button shopBtn;
     public Button playBtn;
     public TextMeshProUGUI coinText;
 
     void Start()
     {
-        shopBtn.onClick.AddListener(OnShopButtonClicked); 
         playBtn.onClick.AddListener(OnPlayButtonClicked);
         UpdateRewardDisplay();
-    }
-
-    void OnShopButtonClicked()
-    {
-        UIManager.Instance.ShowHomePanel(false);
-        UIManager.Instance.ShowCharacterSelectPanel(true);
-        AudioManager.Instance.PlayPopupSound();
     }
 
     void OnPlayButtonClicked()

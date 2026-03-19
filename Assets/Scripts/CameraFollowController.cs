@@ -98,13 +98,24 @@ public class CameraFollowController : MonoBehaviour
     /// </summary>
     public void FindAndSetPlayer()
     {
-        if (target != null) return; // Đã có target rồi, không cần tìm lại
+        if (target != null) return;
 
         GameObject player = GameObject.FindWithTag("Player");
+
+        if (player == null)
+        {
+            var pc = Object.FindFirstObjectByType<PlayerController>();
+            if (pc != null)
+            {
+                player = pc.gameObject;
+                Debug.LogWarning($"CameraFollowController: Player không có tag 'Player', đã tìm bằng PlayerController: '{player.name}'");
+            }
+        }
+
         if (player != null)
         {
             SetTarget(player.transform);
-            Debug.Log($"CameraFollowController: Đã tự động tìm Player '{player.name}'");
+            Debug.Log($"CameraFollowController: Đã tìm thấy Player '{player.name}'");
         }
     }
 }

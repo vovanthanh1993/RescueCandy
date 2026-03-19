@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
@@ -18,12 +19,18 @@ public class EnemyAI : MonoBehaviour
     [Tooltip("Khoảng cách tối thiểu để coi như đã tới điểm tuần tra")]
     public float reachPointDistance = 0.1f;
 
+    [Tooltip("Stopping distance khi tuần tra bằng NavMeshAgent (nên nhỏ, ví dụ 0.05)")]
+    public float patrolStoppingDistance = 0.05f;
+
     [Header("Player Detection & Attack")]
     [Tooltip("Transform của Player (lấy tự động từ PlayerController.Instance)")]
     private Transform player;
 
     [Tooltip("Khoảng cách bắt đầu đuổi/ tấn công player")]
     public float chaseRange = 5f;
+
+    [Tooltip("Khoảng cách để mất mục tiêu (nên lớn hơn Chase Range để tránh giật/nhấp nhả)")]
+    public float loseChaseRange = 7f;
 
     [Tooltip("Khoảng cách được coi là tấn công trúng player")]
     public float attackRange = 1.2f;
@@ -44,6 +51,14 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private bool debugLog = false;
     [SerializeField] private bool showGizmos = true;
 
+    [Header("Ground / Physics")]
+    [Tooltip("Giữ enemy ở đúng độ cao ban đầu (khóa trục Y) để tránh bị lún/rơi khi move bằng Transform")]
+    [SerializeField] private bool lockYPosition = true;
+
+    private float lockedY;
+    private Rigidbody rb;
+    private NavMeshAgent navAgent;
+
     [Header("Animation")]
     [Tooltip("Animator của enemy (kéo Animator vào đây)")]
     [SerializeField] private Animator animator;
@@ -59,9 +74,35 @@ public class EnemyAI : MonoBehaviour
     private Vector3 lastFramePosition;
     private bool isAttacking = false;
     private string debugState = "Patrol";
+    private bool isChasingPlayer = false;
+    private bool wasChasingPlayer = false;
 
     private void Start()
     {
+        // Giữ độ cao ban đầu
+        lockedY = transform.position.y;
+
+        // Nếu có Rigidbody thì cấu hình để không bị physics kéo rơi/lún (vì script đang move bằng Transform)
+        rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.useGravity = false;
+            rb.isKinematic = true;
+            rb.constraints = RigidbodyConstraints.FreezeRotation;
+        }
+
+        // NavMeshAgent (nếu có thì ưu tiên dùng để di chuyển)
+        navAgent = GetComponent<NavMeshAgent>();
+        if (navAgent != null)
+        {
+            navAgent.speed = moveSpeed;
+            navAgent.stoppingDistance = Mathf.Max(0.01f, patrolStoppingDistance);
+            navAgent.isStopped = false;
+
+            // Khi dùng NavMeshAgent thì không cần lockYPosition kiểu Transform nữa
+            lockYPosition = false;
+        }
+
         if (animator == null)
         {
             animator = GetComponentInChildren<Animator>();
@@ -78,8 +119,23 @@ public class EnemyAI : MonoBehaviour
         // Nếu chưa gán target thì mặc định đi từ pointA
         currentTarget = pointA;
 
+        wasChasingPlayer = isChasingPlayer;
+
         // Lưu vị trí khung hình trước để tính tốc độ cho animation
         lastFramePosition = transform.position;
+    }
+
+    private void OnDisable()
+    {
+        // Khi enemy chết -> EnemyHealth.Die() sẽ disable EnemyAI.
+        // Hủy mọi Invoke pending để không còn gây damage/tấn công sau khi đã chết.
+        CancelInvoke();
+        isAttacking = false;
+
+        if (navAgent != null && navAgent.enabled)
+        {
+            navAgent.isStopped = true;
+        }
     }
 
     private void AcquirePlayer()
@@ -160,9 +216,35 @@ public class EnemyAI : MonoBehaviour
         }
 
         float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+        bool canReachPlayer = CanReachPosition(player.position);
 
-        // Nếu player vào tầm đuổi -> đuổi theo, tới tầm đánh -> đứng lại và đánh
-        if (distanceToPlayer <= chaseRange)
+        // Hysteresis + điều kiện đường đi:
+        // - Chỉ bắt đầu đuổi khi trong tầm phát hiện và có đường đi hợp lệ tới player.
+        // - Đang đuổi thì vẫn cần giữ được đường đi; mất đường đi sẽ hủy chase ngay.
+        if (!isChasingPlayer)
+        {
+            if (distanceToPlayer <= chaseRange && canReachPlayer)
+            {
+                isChasingPlayer = true;
+            }
+        }
+        else
+        {
+            float loseRange = Mathf.Max(loseChaseRange, chaseRange);
+            if (distanceToPlayer > loseRange || !canReachPlayer)
+            {
+                isChasingPlayer = false;
+            }
+        }
+
+        // Vừa rời khỏi trạng thái đuổi: chọn A hoặc B gần nhất để quay về rồi patrol tiếp
+        if (wasChasingPlayer && !isChasingPlayer)
+        {
+            SelectClosestPatrolPointToCurrentPosition();
+        }
+
+        // Nếu đang đuổi -> đuổi theo, tới tầm đánh -> đứng lại và đánh
+        if (isChasingPlayer)
         {
             debugState = distanceToPlayer <= attackRange ? "Attack" : "Chase";
             ChaseAndAttackPlayer(distanceToPlayer);
@@ -172,6 +254,28 @@ public class EnemyAI : MonoBehaviour
         // Player ngoài tầm đuổi -> quay về tuần tra
         debugState = "Patrol";
         PatrolBetweenPoints();
+
+        // Khóa trục Y nếu bật
+        if (lockYPosition)
+        {
+            Vector3 p = transform.position;
+            if (!Mathf.Approximately(p.y, lockedY))
+            {
+                transform.position = new Vector3(p.x, lockedY, p.z);
+            }
+        }
+
+        wasChasingPlayer = isChasingPlayer;
+    }
+
+    private void SelectClosestPatrolPointToCurrentPosition()
+    {
+        if (pointA == null || pointB == null) return;
+
+        float distA = Vector3.Distance(transform.position, pointA.position);
+        float distB = Vector3.Distance(transform.position, pointB.position);
+
+        currentTarget = distA <= distB ? pointA : pointB;
     }
 
     private void PatrolBetweenPoints()
@@ -185,11 +289,16 @@ public class EnemyAI : MonoBehaviour
             currentTarget = pointA;
         }
 
+        // Nếu có NavMeshAgent, dùng stoppingDistance nhỏ cho tuần tra
+        if (navAgent != null && navAgent.enabled)
+        {
+            navAgent.stoppingDistance = Mathf.Max(0.01f, patrolStoppingDistance);
+        }
+
         MoveTowards(currentTarget.position);
 
         // Đảo hướng khi tới gần điểm
-        float dist = Vector3.Distance(transform.position, currentTarget.position);
-        if (dist <= reachPointDistance)
+        if (HasReachedDestination(currentTarget.position))
         {
             currentTarget = currentTarget == pointA ? pointB : pointA;
         }
@@ -197,9 +306,24 @@ public class EnemyAI : MonoBehaviour
 
     private void ChaseAndAttackPlayer(float distanceToPlayer)
     {
+        // Đang trong tầm truy đuổi nhưng không còn đường hợp lệ tới player -> hủy chase và quay về patrol
+        if (navAgent != null && navAgent.enabled && !CanReachPosition(player.position))
+        {
+            if (debugLog)
+            {
+                Debug.Log($"EnemyAI[{name}]: Không tìm được đường tới player, quay về patrol.");
+            }
+
+            isChasingPlayer = false;
+            SelectClosestPatrolPointToCurrentPosition();
+            ResumeMovement();
+            return;
+        }
+
         // Trong tầm đánh: dừng lại và đánh
         if (distanceToPlayer <= attackRange)
         {
+            StopMovement();
             FaceTowards(player.position);
 
             if (Time.time - lastAttackTime >= attackCooldown)
@@ -212,6 +336,11 @@ public class EnemyAI : MonoBehaviour
         }
 
         // Ngoài tầm đánh nhưng còn trong tầm đuổi: đuổi theo player
+        ResumeMovement();
+        if (navAgent != null && navAgent.enabled)
+        {
+            navAgent.stoppingDistance = Mathf.Max(0.01f, attackRange);
+        }
         MoveTowards(player.position);
 
         if (debugLog)
@@ -234,6 +363,13 @@ public class EnemyAI : MonoBehaviour
 
     private void MoveTowards(Vector3 targetPosition)
     {
+        // Ưu tiên NavMeshAgent nếu có
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            navAgent.SetDestination(targetPosition);
+            return;
+        }
+
         Vector3 direction = (targetPosition - transform.position);
         direction.y = 0f; // Giữ enemy trên mặt phẳng
 
@@ -256,6 +392,7 @@ public class EnemyAI : MonoBehaviour
     private void PerformAttack()
     {
         isAttacking = true;
+        StopMovement();
 
         // Animation attack
         if (animator != null && !string.IsNullOrEmpty(attackTrigger))
@@ -294,6 +431,51 @@ public class EnemyAI : MonoBehaviour
     private void EndAttackLock()
     {
         isAttacking = false;
+        ResumeMovement();
+    }
+
+    private void StopMovement()
+    {
+        if (navAgent != null && navAgent.enabled)
+        {
+            navAgent.isStopped = true;
+        }
+    }
+
+    private void ResumeMovement()
+    {
+        if (navAgent != null && navAgent.enabled)
+        {
+            navAgent.isStopped = false;
+        }
+    }
+
+    private bool HasReachedDestination(Vector3 targetPosition)
+    {
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            if (navAgent.pathPending) return false;
+            // remainingDistance là khoảng cách còn lại trên đường đi
+            float remaining = navAgent.remainingDistance;
+            float threshold = Mathf.Max(reachPointDistance, navAgent.stoppingDistance + reachPointDistance);
+            return remaining <= threshold;
+        }
+
+        return Vector3.Distance(transform.position, targetPosition) <= reachPointDistance;
+    }
+
+    private bool CanReachPosition(Vector3 targetPosition)
+    {
+        if (navAgent == null || !navAgent.enabled || !navAgent.isOnNavMesh)
+            return true;
+
+        NavMeshPath path = new NavMeshPath();
+        if (!navAgent.CalculatePath(targetPosition, path))
+            return false;
+
+        // PathComplete: đi tới đích được.
+        // PathPartial/Invalid: không đi tới đích trọn vẹn -> coi như không tìm được đường.
+        return path.status == NavMeshPathStatus.PathComplete;
     }
 
     private void OnDrawGizmosSelected()
@@ -327,8 +509,16 @@ public class EnemyAI : MonoBehaviour
         if (animator == null || string.IsNullOrEmpty(speedParam))
             return;
 
-        float distance = Vector3.Distance(transform.position, lastFramePosition);
-        float currentSpeed = distance / Mathf.Max(Time.deltaTime, 0.0001f);
+        float currentSpeed;
+        if (navAgent != null && navAgent.enabled)
+        {
+            currentSpeed = navAgent.velocity.magnitude;
+        }
+        else
+        {
+            float distance = Vector3.Distance(transform.position, lastFramePosition);
+            currentSpeed = distance / Mathf.Max(Time.deltaTime, 0.0001f);
+        }
 
         // Chuẩn hóa về 0-1 để dùng cho blend tree walk/run nếu cần
         float normalizedSpeed = Mathf.Clamp01(currentSpeed / moveSpeed);
