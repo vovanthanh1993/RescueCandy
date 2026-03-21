@@ -43,9 +43,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3622110834412265866}
     m_Modifications:
+    - target: {fileID: -5412628165930243140, guid: 04b984305fb24ec499b27e15c62c1876, type: 3}
+      propertyPath: m_Convex
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7361244771601019496, guid: 04b984305fb24ec499b27e15c62c1876, type: 3}
       propertyPath: m_Name
       value: DoorPlasma_01 (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 7361244771601019496, guid: 04b984305fb24ec499b27e15c62c1876, type: 3}
+      propertyPath: m_TagString
+      value: EndTag
       objectReference: {fileID: 0}
     - target: {fileID: 7882343552582854866, guid: 04b984305fb24ec499b27e15c62c1876, type: 3}
       propertyPath: m_RootOrder
@@ -116,6 +124,10 @@ PrefabInstance:
     - target: {fileID: 6326708045882652336, guid: b460985814929a94bb26385220a67f2b, type: 3}
       propertyPath: m_Name
       value: Gate_03
+      objectReference: {fileID: 0}
+    - target: {fileID: 6326708045882652336, guid: b460985814929a94bb26385220a67f2b, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6667346006142659594, guid: b460985814929a94bb26385220a67f2b, type: 3}
       propertyPath: m_RootOrder
@@ -249,6 +261,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3622110834412265866}
     m_Modifications:
+    - target: {fileID: -5412628165930243140, guid: 04b984305fb24ec499b27e15c62c1876, type: 3}
+      propertyPath: m_Convex
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7361244771601019496, guid: 04b984305fb24ec499b27e15c62c1876, type: 3}
       propertyPath: m_Name
       value: DoorPlasma_01

@@ -861,14 +861,6 @@ public class PlayerController : MonoBehaviour
             {
                 ShowVictory();
             }
-            else
-            {
-                string msg = $"Cần giải cứu thêm Sweetie! ({rescued}/{required})";
-                if (UIManager.Instance != null && UIManager.Instance.noticePanel != null)
-                {
-                    UIManager.Instance.noticePanel.Init(msg);
-                }
-            }
         }
 
         // Xử lý checkpoint bằng collider thường
@@ -915,7 +907,7 @@ public class PlayerController : MonoBehaviour
         PlayerHealth playerHealth = GetComponent<PlayerHealth>();
         if (playerHealth == null) return;
 
-        playerHealth.TakeDamage(limitDamage);
+        playerHealth.TakeDamageIgnoreShield(limitDamage);
 
         if (playerHealth.CurrentHealth > 0)
         {

@@ -73,6 +73,31 @@ public class PlayerHealth : MonoBehaviour
         isShielded = shielded;
     }
 
+    public void TakeDamageIgnoreShield(int damage)
+    {
+        if (damage <= 0) return;
+        if (currentHealth <= 0) return;
+
+        currentHealth = Mathf.Max(0, currentHealth - damage);
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+
+        hitFlash?.Flash();
+
+        if (AudioManager.Instance != null && Time.time - lastHurtSoundTime >= hurtSoundCooldown)
+        {
+            lastHurtSoundTime = Time.time;
+            AudioManager.Instance.PlayHurtSound();
+        }
+
+        if (currentHealth <= 0)
+        {
+            if (PlayerController.Instance != null)
+            {
+                PlayerController.Instance.DieFromHPZero();
+            }
+        }
+    }
+
     public void TakeDamage(int damage)
     {
         if (damage <= 0) return;

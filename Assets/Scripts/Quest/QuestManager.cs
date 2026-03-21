@@ -212,17 +212,7 @@ public class QuestManager : MonoBehaviour
         
         if (canComplete)
         {
-            // Đã collect đủ, hoàn thành quest
             CheckQuestComplete();
-        }
-        else
-        {
-            if (LevelManager.Instance != null)
-            {
-                int rescued = LevelManager.Instance.GetRescuedSweetieCount();
-                int required = LevelManager.Instance.GetRequiredSweetieRescuesForCurrentLevel();
-                Debug.Log($"Cần giải cứu thêm Sweetie! ({rescued}/{required})");
-            }
         }
     }
     

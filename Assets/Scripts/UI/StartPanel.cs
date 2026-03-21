@@ -6,6 +6,7 @@ using TMPro;
 public class StartPanel : MonoBehaviour
 {
     [Header("Panel UI")]
+    public TextMeshProUGUI headerText;
     public TextMeshProUGUI description;
     public TextMeshProUGUI star2TimeText;
     public TextMeshProUGUI star3TimeText;
@@ -18,8 +19,9 @@ public class StartPanel : MonoBehaviour
 
         gameObject.SetActive(true);
 
-        // Load và hiển thị description từ QuestData đầu tiên (Quest1) mặc định
-        // Quest index = level number (Level 1 -> Quest1, Level 2 -> Quest2...)
+        if (headerText != null)
+            headerText.text = $"Level {levelData.level}";
+
         LoadQuestDescription(levelData.level);
 
     }

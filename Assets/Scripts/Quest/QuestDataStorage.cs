@@ -36,22 +36,19 @@ public static class QuestDataStorage
             return; // File đã tồn tại, không cần tạo
         }
         
-        Debug.Log("QuestDataStorage: Không tìm thấy file quest, đang tạo file quest mặc định (50 level)...");
+        Debug.Log("QuestDataStorage: Không tìm thấy file quest, đang tạo file quest mặc định (30 level)...");
         
-        // Tạo thư mục nếu chưa có
         string directory = Path.GetDirectoryName(QuestFilePath);
         if (!Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
         }
         
-        // Tạo 50 level với pattern lặp lại 15 level
         Dictionary<int, QuestData> quests = new Dictionary<int, QuestData>();
-        Dictionary<int, QuestData> patternQuests = new Dictionary<int, QuestData>();
         
-        int patternLength = 15;
-        int baseSweetieRescues = 3;
-        int sweetieRescuesIncrement = 1;
+        int totalLevels = 30;
+        int patternLength = 5;
+        int[] sweetiePattern = { 2, 3, 4, 5, 6 };
         float baseTimeLimit = 120f;
         float timeLimitIncrement = 10f;
         int baseReward1Star = 50;
@@ -59,43 +56,17 @@ public static class QuestDataStorage
         int baseReward3Star = 150;
         int rewardIncrement = 25;
         
-        // Tạo pattern cho 15 level đầu
-        for (int patternLevel = 1; patternLevel <= patternLength; patternLevel++)
+        for (int level = 1; level <= totalLevels; level++)
         {
-            QuestData quest = ScriptableObject.CreateInstance<QuestData>();
-            quest.questId = patternLevel;
-            quest.objectives = new QuestObjective[0];
-            
-            int sweeties = baseSweetieRescues + (patternLevel - 1) * sweetieRescuesIncrement;
-            quest.requiredSweetieRescues = Mathf.Min(sweeties, 20);
-            
-            quest.timeLimit = baseTimeLimit + (patternLevel - 1) * timeLimitIncrement;
-            quest.timeFor3Stars = quest.timeLimit * 0.4f;
-            quest.timeFor2Stars = quest.timeLimit * 0.7f;
-            
-            quest.rewardList = new List<int>
-            {
-                baseReward1Star + (patternLevel - 1) * rewardIncrement,
-                baseReward2Star + (patternLevel - 1) * rewardIncrement,
-                baseReward3Star + (patternLevel - 1) * rewardIncrement
-            };
-            
-            patternQuests[patternLevel] = quest;
-        }
-        
-        // Tạo tất cả 50 level bằng cách lặp lại pattern
-        for (int level = 1; level <= 50; level++)
-        {
-            int patternIndex = ((level - 1) % patternLength) + 1;
-            QuestData patternQuest = patternQuests[patternIndex];
+            int patternIndex = (level - 1) % patternLength;
             
             QuestData quest = ScriptableObject.CreateInstance<QuestData>();
             quest.questId = level;
-            quest.objectives = patternQuest.objectives;
-            quest.requiredSweetieRescues = patternQuest.requiredSweetieRescues;
-            quest.timeLimit = patternQuest.timeLimit;
-            quest.timeFor3Stars = patternQuest.timeFor3Stars;
-            quest.timeFor2Stars = patternQuest.timeFor2Stars;
+            quest.objectives = new QuestObjective[0];
+            quest.requiredSweetieRescues = sweetiePattern[patternIndex];
+            quest.timeLimit = baseTimeLimit + (level - 1) * timeLimitIncrement;
+            quest.timeFor3Stars = 240f + (level - 1) * 10f;  // 4 phút + 10s mỗi level
+            quest.timeFor2Stars = 360f + (level - 1) * 15f;  // 6 phút + 15s mỗi level
             
             quest.rewardList = new List<int>
             {
@@ -111,6 +82,8 @@ public static class QuestDataStorage
         SaveAllQuests(quests);
         
         Debug.Log($"QuestDataStorage: Đã tạo file quest mặc định với {quests.Count} level tại {QuestFilePath}");
+        
+        // Cập nhật SaveAllQuests để dùng đúng logic lock cho lần đầu tạo file
     }
     
     /// <summary>

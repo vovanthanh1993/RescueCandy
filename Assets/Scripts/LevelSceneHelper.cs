@@ -13,23 +13,6 @@ public static class LevelSceneHelper
     /// <returns>Tên scene tương ứng</returns>
     public static string GetSceneNameForLevel(int level)
     {
-        // Tính vị trí trong chu kỳ 15 level (0-14)
-        int positionInCycle = (level - 1) % 15;
-        
-        // Level 1-5 (position 0-4): GamePlay1
-        // Level 6-10 (position 5-9): GamePlay2
-        // Level 11-15 (position 10-14): GamePlay3
-        if (positionInCycle < 5)
-        {
-            return "GamePlay1";
-        }
-        else if (positionInCycle < 10)
-        {
-            return "GamePlay2";
-        }
-        else
-        {
-            return "GamePlay3";
-        }
+        return "GamePlay1";
     }
 }

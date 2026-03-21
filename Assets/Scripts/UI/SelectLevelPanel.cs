@@ -6,6 +6,11 @@ using System;
 
 public class SelectLevelPanel : MonoBehaviour
 {
+    [Header("Navigation Buttons")]
+    public Button homeBtn;
+    public Button nextBtn;
+    public Button prevBtn;
+
     [Header("Level Setup")]
     [Tooltip("Content của Scroll-Snap. Nếu để trống, sẽ tự động tìm")]
     public Transform contentRoot; // Content của Scroll-Snap
@@ -30,11 +35,54 @@ public class SelectLevelPanel : MonoBehaviour
 
     private void Start()
     {
+        if (homeBtn != null)
+            homeBtn.onClick.AddListener(OnHomeButtonClicked);
+        if (nextBtn != null)
+            nextBtn.onClick.AddListener(OnNextClicked);
+        if (prevBtn != null)
+            prevBtn.onClick.AddListener(OnPrevClicked);
+
         LoadPlayerData();
-        // Đảm bảo quest data đã được tạo
         EnsureQuestDataExists();
-        // Init tất cả StageComplete
         InitializeAllStageCompletes();
+    }
+
+    private void Update()
+    {
+        UpdateNavigationButtons();
+    }
+
+    private void OnNextClicked()
+    {
+        if (SelectLevelCamera.Instance != null)
+            SelectLevelCamera.Instance.GoNext();
+    }
+
+    private void OnPrevClicked()
+    {
+        if (SelectLevelCamera.Instance != null)
+            SelectLevelCamera.Instance.GoPrev();
+    }
+
+    private void UpdateNavigationButtons()
+    {
+        if (SelectLevelCamera.Instance == null) return;
+        if (nextBtn != null)
+            nextBtn.interactable = SelectLevelCamera.Instance.HasNext();
+        if (prevBtn != null)
+            prevBtn.interactable = SelectLevelCamera.Instance.HasPrev();
+    }
+
+    private void OnHomeButtonClicked()
+    {
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayPopupSound();
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowSelectLevelPanel(false);
+            UIManager.Instance.ShowHomePanel(true);
+        }
+        GameCommonUtils.LoadScene("HomeScene");
     }
 
     /// <summary>

@@ -18,8 +18,9 @@ public class HomePanel : MonoBehaviour
 
     void OnPlayButtonClicked()
     {
-        UIManager.Instance.ShowSelectLevelPanel(true);
         AudioManager.Instance.PlayPopupSound();
+        UIManager.Instance.ShowHomePanel(false);
+        GameCommonUtils.LoadScene("SelectLevel");
     }
 
     void OnUpgradeButtonClicked()
