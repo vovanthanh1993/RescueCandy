@@ -846,7 +846,7 @@ MonoBehaviour:
   healthPickupVFXPrefab: {fileID: 0}
   speedPickupVFXPrefab: {fileID: 0}
   shieldKey: 107
-  shieldManaCost: 50
+  shieldManaCost: 30
   shieldDuration: 5
   shieldCooldown: 20
   shieldEffect: {fileID: 2835632020340288382}

@@ -9,10 +9,6 @@ public class SkullItem : MonoBehaviour
     [SerializeField] private GameObject hitEffect;
     [SerializeField] private float effectDuration = 2f;
 
-    [Header("SFX")]
-    [SerializeField] private string hitSoundName = "se_hurt";
-    [Range(0f, 1f)]
-    [SerializeField] private float hitSoundVolume = 1f;
 
     private bool isTriggered = false;
 
@@ -34,9 +30,9 @@ public class SkullItem : MonoBehaviour
             Destroy(vfx, effectDuration);
         }
 
-        if (AudioManager.Instance != null && !string.IsNullOrEmpty(hitSoundName))
+        if (AudioManager.Instance != null)
         {
-            AudioManager.Instance.PlaySound(hitSoundName, hitSoundVolume);
+            AudioManager.Instance.PlaySound("se_boom");
         }
 
         Destroy(gameObject);

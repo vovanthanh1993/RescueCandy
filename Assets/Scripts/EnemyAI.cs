@@ -41,12 +41,6 @@ public class EnemyAI : MonoBehaviour
     [Tooltip("Thời gian enemy đứng yên khi đánh (giây)")]
     public float attackLockDuration = 0.8f;
 
-    [Tooltip("Damage gây ra mỗi lần enemy tấn công")]
-    public int enemyDamage = 10;
-
-    [Tooltip("Delay (giây) từ lúc đánh tới lúc tính trúng đòn/dính damage")]
-    public float damageDelay = 0.5f;
-
     [Header("Debug")]
     [SerializeField] private bool debugLog = false;
     [SerializeField] private bool showGizmos = true;
@@ -394,38 +388,12 @@ public class EnemyAI : MonoBehaviour
         isAttacking = true;
         StopMovement();
 
-        // Animation attack
         if (animator != null && !string.IsNullOrEmpty(attackTrigger))
         {
             animator.SetTrigger(attackTrigger);
         }
 
-        Debug.Log("EnemyAI: Tấn công player!");
-
-        // Sau một khoảng delay, nếu player vẫn trong tầm đánh thì mới tính damage
-        CancelInvoke(nameof(ApplyDamageIfPlayerStillInRange));
-        Invoke(nameof(ApplyDamageIfPlayerStillInRange), Mathf.Max(0f, damageDelay));
-
-        // Sau một khoảng thời gian, cho phép di chuyển lại
         Invoke(nameof(EndAttackLock), attackLockDuration);
-    }
-
-    private void ApplyDamageIfPlayerStillInRange()
-    {
-        if (player == null)
-        {
-            AcquirePlayer();
-        }
-
-        if (player == null) return;
-
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
-        if (distanceToPlayer > attackRange) return;
-
-        if (PlayerHealth.Instance != null)
-        {
-            PlayerHealth.Instance.TakeDamage(enemyDamage);
-        }
     }
 
     private void EndAttackLock()

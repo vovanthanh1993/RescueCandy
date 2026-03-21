@@ -110,7 +110,7 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Phím kích hoạt Shield")]
     [SerializeField] private KeyCode shieldKey = KeyCode.K;
     [Tooltip("Lượng mana cần để dùng Shield")]
-    [SerializeField] private int shieldManaCost = 50;
+    [SerializeField] private int shieldManaCost = 30;
     [Tooltip("Thời gian Shield hoạt động (giây)")]
     [SerializeField] private float shieldDuration = 5f;
     [Tooltip("Thời gian cooldown (giây)")]
