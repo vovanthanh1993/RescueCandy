@@ -5,17 +5,26 @@ using TMPro;
 public class HomePanel : MonoBehaviour
 {
     public Button playBtn;
+    public Button upgradeBtn;
     public TextMeshProUGUI coinText;
 
     void Start()
     {
         playBtn.onClick.AddListener(OnPlayButtonClicked);
+        if (upgradeBtn != null)
+            upgradeBtn.onClick.AddListener(OnUpgradeButtonClicked);
         UpdateRewardDisplay();
     }
 
     void OnPlayButtonClicked()
     {
         UIManager.Instance.ShowSelectLevelPanel(true);
+        AudioManager.Instance.PlayPopupSound();
+    }
+
+    void OnUpgradeButtonClicked()
+    {
+        UIManager.Instance.ShowUpgradePanel(true);
         AudioManager.Instance.PlayPopupSound();
     }
 

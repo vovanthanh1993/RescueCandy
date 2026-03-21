@@ -11,6 +11,9 @@ public class InputManager : MonoBehaviour
     
     private bool isInputEnabled = true;
 
+    private bool attackButtonPressed = false;
+    private bool jumpButtonPressed = false;
+
     private void Awake()
     {
         if (Instance == null)
@@ -32,6 +35,36 @@ public class InputManager : MonoBehaviour
     public void EnablePlayerInput()
     {
         isInputEnabled = true;
+    }
+
+    public void OnAttackButtonDown()
+    {
+        attackButtonPressed = true;
+    }
+
+    public void OnJumpButtonDown()
+    {
+        jumpButtonPressed = true;
+    }
+
+    public bool ConsumeAttackButton()
+    {
+        if (attackButtonPressed)
+        {
+            attackButtonPressed = false;
+            return true;
+        }
+        return false;
+    }
+
+    public bool ConsumeJumpButton()
+    {
+        if (jumpButtonPressed)
+        {
+            jumpButtonPressed = false;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>

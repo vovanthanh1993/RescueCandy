@@ -19,6 +19,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Transform groundCheckPoint;
     [Tooltip("Layer mặt đất")]
     [SerializeField] private LayerMask groundLayer = 1; // Default layer
+    [Tooltip("Thời gian cooldown nhảy (giây)")]
+    [SerializeField] private float jumpCooldown = 2f;
     [Tooltip("Hệ số nhân lực rơi (càng lớn càng rơi nhanh)")]
     [SerializeField] private float gravityMultiplier = 2f;
     
@@ -26,7 +28,7 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Phím dùng để tấn công")]
     [SerializeField] private KeyCode attackKey = KeyCode.J;
     [Tooltip("Thời gian cooldown giữa các lần tấn công (giây)")]
-    [SerializeField] private float attackCooldown = 0.5f;
+    [SerializeField] private float attackCooldown = 1f;
     [Tooltip("Tên state attack trong Animator (phải trùng với tên state trong Animator). Chỉ cho di chuyển lại khi state này chạy xong.")]
     [SerializeField] private string attackStateName = "Attack";
     [Tooltip("Layer của Animator chứa state attack (thường là 0).")]
@@ -37,9 +39,16 @@ public class PlayerController : MonoBehaviour
     private float baseMoveSpeed; // Tốc độ gốc
     private bool isSpeedBoosted = false; // Đang trong trạng thái speed boost
     private float verticalVelocity = 0f; // Vận tốc theo trục Y (cho jump và gravity)
-    private bool isGrounded = false; // Đang trên mặt đất hay không
-    private bool isAttacking = false; // Đang trong animation tấn công
-    private float lastAttackTime = -999f; // Thời điểm tấn công lần cuối (để cooldown)
+    private bool isGrounded = false;
+    private float jumpGroundIgnoreTimer = 0f;
+    private float jumpCooldownTimer = 0f;
+
+    public System.Action<float> OnJumpCooldownChanged;
+    private bool isAttacking = false;
+    private float lastAttackTime = -999f;
+    private float attackCooldownTimer = 0f;
+
+    public System.Action<float> OnAttackCooldownChanged;
     private bool cachedApplyRootMotion = true; // Giá trị applyRootMotion gốc (khôi phục sau khi tấn công)
     
     [Header("Camera Settings")]
@@ -96,6 +105,26 @@ public class PlayerController : MonoBehaviour
     
     [Tooltip("VFX effect khi nhặt Speed Item")]
     [SerializeField] private GameObject speedPickupVFXPrefab;
+
+    [Header("Shield Skill Settings")]
+    [Tooltip("Phím kích hoạt Shield")]
+    [SerializeField] private KeyCode shieldKey = KeyCode.K;
+    [Tooltip("Lượng mana cần để dùng Shield")]
+    [SerializeField] private int shieldManaCost = 50;
+    [Tooltip("Thời gian Shield hoạt động (giây)")]
+    [SerializeField] private float shieldDuration = 5f;
+    [Tooltip("Thời gian cooldown (giây)")]
+    [SerializeField] private float shieldCooldown = 20f;
+    [Tooltip("GameObject hiệu ứng Shield (con của Player)")]
+    [SerializeField] private GameObject shieldEffect;
+
+    private bool isShieldActive = false;
+    private bool isShieldOnCooldown = false;
+    private float shieldTimer = 0f;
+    private float shieldCooldownTimer = 0f;
+
+    public System.Action<float> OnShieldCooldownChanged;
+    public System.Action<bool> OnShieldStateChanged;
 
     [Header("Speed Skill Settings")]
     [Tooltip("Tốc độ tăng thêm khi kích hoạt skill")]
@@ -217,6 +246,9 @@ public class PlayerController : MonoBehaviour
             cachedApplyRootMotion = playerAnimation.animator.applyRootMotion;
         
         // Camera sẽ được quản lý bởi CameraFollowController tự động
+
+        if (shieldEffect != null)
+            shieldEffect.SetActive(false);
     }
 
     private void Update()
@@ -232,6 +264,7 @@ public class PlayerController : MonoBehaviour
         }
 
         HandleInput();
+        UpdateShieldSkill();
         UpdateSpeedSkill();
     }
 
@@ -262,20 +295,29 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void HandleJump()
     {
-        // Kiểm tra mặt đất
         CheckGrounded();
-        
-        // Nhấn Space và đang trên mặt đất thì nhảy (không cho nhảy khi đang tấn công)
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && canReceiveInput && !isDisable && !isAttacking)
+
+        if (jumpCooldownTimer > 0f)
+        {
+            jumpCooldownTimer -= Time.deltaTime;
+            if (jumpCooldownTimer <= 0f)
+            {
+                jumpCooldownTimer = 0f;
+                OnJumpCooldownChanged?.Invoke(0f);
+            }
+            else
+            {
+                OnJumpCooldownChanged?.Invoke(1f - (jumpCooldownTimer / jumpCooldown));
+            }
+        }
+
+        bool jumpPressed = Input.GetKeyDown(KeyCode.Space) || (InputManager.Instance != null && InputManager.Instance.ConsumeJumpButton());
+        if (jumpPressed && isGrounded && jumpGroundIgnoreTimer <= 0f && jumpCooldownTimer <= 0f && canReceiveInput && !isDisable && !isAttacking)
         {
             verticalVelocity = jumpForce;
-            
-            // Phát animation jump nếu có
-            if (playerAnimation != null)
-            {
-                // Nếu PlayerAnimation có method Jump(), gọi nó
-                // playerAnimation.Jump();
-            }
+            jumpGroundIgnoreTimer = 0.2f;
+            jumpCooldownTimer = jumpCooldown;
+            OnJumpCooldownChanged?.Invoke(0f);
         }
     }
     
@@ -284,19 +326,36 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void HandleAttack()
     {
+        if (attackCooldownTimer > 0f)
+        {
+            attackCooldownTimer -= Time.deltaTime;
+            if (attackCooldownTimer <= 0f)
+            {
+                attackCooldownTimer = 0f;
+                OnAttackCooldownChanged?.Invoke(0f);
+            }
+            else
+            {
+                OnAttackCooldownChanged?.Invoke(1f - (attackCooldownTimer / attackCooldown));
+            }
+        }
+
         if (!canReceiveInput || isDisable || isAttacking) return;
-        if (Time.time - lastAttackTime < attackCooldown) return;
-        
-        if (Input.GetKeyDown(attackKey))
+        if (attackCooldownTimer > 0f) return;
+
+        bool attackPressed = Input.GetKeyDown(attackKey) || (InputManager.Instance != null && InputManager.Instance.ConsumeAttackButton());
+        if (attackPressed)
         {
             lastAttackTime = Time.time;
             isAttacking = true;
-            
+            attackCooldownTimer = attackCooldown;
+            OnAttackCooldownChanged?.Invoke(0f);
+
             if (playerAnimation != null)
             {
                 playerAnimation.SetAttack();
             }
-            
+
             StartCoroutine(ResetAttackStateAfterDuration());
         }
     }
@@ -339,13 +398,17 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void CheckGrounded()
     {
-        // Dùng điểm ở chân nếu đã gán, không thì dùng vị trí gốc
+        if (jumpGroundIgnoreTimer > 0f)
+        {
+            jumpGroundIgnoreTimer -= Time.deltaTime;
+            isGrounded = false;
+            return;
+        }
+
         Vector3 origin = groundCheckPoint != null ? groundCheckPoint.position : transform.position;
-        // Khoảng cách raycast: từ điểm kiểm tra xuống một chút
         float rayDistance = groundCheckPoint != null ? groundCheckDistance + 0.05f : characterController.height * 0.5f + 0.1f;
         isGrounded = Physics.Raycast(origin, Vector3.down, rayDistance, groundLayer);
-        
-        // Nếu raycast không phát hiện, dùng CharacterController.isGrounded làm backup
+
         if (!isGrounded)
         {
             isGrounded = characterController.isGrounded;
@@ -385,26 +448,9 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // Đã chạm đất - chỉ reset khi verticalVelocity đang âm (đang rơi xuống)
-            // Và chỉ reset khi đã thực sự chạm đất (kiểm tra khoảng cách rất nhỏ)
             if (verticalVelocity < 0f)
             {
-                // Kiểm tra lại bằng raycast với khoảng cách rất nhỏ để chắc chắn đã chạm đất
-                Vector3 origin = groundCheckPoint != null ? groundCheckPoint.position : transform.position;
-                float verySmallDistance = 0.05f; // Khoảng cách rất nhỏ
-                float rayDist = groundCheckPoint != null ? groundCheckDistance + verySmallDistance : characterController.height * 0.5f + verySmallDistance;
-                bool reallyGrounded = Physics.Raycast(origin, Vector3.down, rayDist, groundLayer);
-                
-                if (reallyGrounded)
-                {
-                    // Chỉ reset khi thực sự chạm đất
-                    verticalVelocity = -2f; // Giữ lực nhỏ xuống để bám đất
-                }
-                // Nếu chưa thực sự chạm đất, tiếp tục áp dụng gravity
-                else
-                {
-                    verticalVelocity += Physics.gravity.y * gravityMultiplier * Time.deltaTime;
-                }
+                verticalVelocity = -2f;
             }
         }
 
@@ -526,10 +572,10 @@ public class PlayerController : MonoBehaviour
         if (isGameOver) return;
         isGameOver = true;
 
-        // Dừng mọi coroutine đang chạy (để tránh spawn/logic cũ)
+        DeactivateShield();
+
         StopAllCoroutines();
 
-        // Disable input ngay lập tức
         canReceiveInput = false;
         isDisable = true;
 
@@ -1211,6 +1257,126 @@ public class PlayerController : MonoBehaviour
         isSpeedBoosted = false;
         
         Debug.Log($"Speed Boost hết hạn! Tốc độ về: {baseMoveSpeed}");
+    }
+
+    #endregion
+
+    #region Attack Cooldown
+
+    public float GetAttackCooldownRemaining() => attackCooldownTimer;
+    public float GetAttackCooldownProgress() => attackCooldownTimer <= 0f ? 0f : 1f - (attackCooldownTimer / attackCooldown);
+    public bool IsAttackOnCooldown() => attackCooldownTimer > 0f;
+
+    #endregion
+
+    #region Jump Cooldown
+
+    public float GetJumpCooldownRemaining() => jumpCooldownTimer;
+    public float GetJumpCooldownProgress() => jumpCooldownTimer <= 0f ? 0f : 1f - (jumpCooldownTimer / jumpCooldown);
+    public bool IsJumpOnCooldown() => jumpCooldownTimer > 0f;
+
+    #endregion
+
+    #region Shield Skill
+
+    private void UpdateShieldSkill()
+    {
+        if (Input.GetKeyDown(shieldKey) && canReceiveInput && !isDisable)
+        {
+            TryActivateShield();
+        }
+
+        if (isShieldOnCooldown)
+        {
+            shieldCooldownTimer -= Time.deltaTime;
+            if (shieldCooldownTimer <= 0f)
+            {
+                shieldCooldownTimer = 0f;
+                isShieldOnCooldown = false;
+                OnShieldCooldownChanged?.Invoke(0f);
+            }
+            else
+            {
+                OnShieldCooldownChanged?.Invoke(1f - (shieldCooldownTimer / shieldCooldown));
+            }
+        }
+
+        if (isShieldActive)
+        {
+            shieldTimer -= Time.deltaTime;
+            if (shieldTimer <= 0f)
+            {
+                DeactivateShield();
+            }
+        }
+    }
+
+    public bool TryActivateShield()
+    {
+        if (isShieldOnCooldown || isShieldActive) return false;
+        if (isDisable || !canReceiveInput) return false;
+
+        if (PlayerMana.Instance == null || !PlayerMana.Instance.HasEnoughMana(shieldManaCost))
+        {
+            Debug.Log("PlayerController: Không đủ mana để kích hoạt Shield!");
+            return false;
+        }
+
+        PlayerMana.Instance.UseMana(shieldManaCost);
+        ActivateShield();
+        return true;
+    }
+
+    private void ActivateShield()
+    {
+        isShieldActive = true;
+        shieldTimer = shieldDuration;
+
+        isShieldOnCooldown = true;
+        shieldCooldownTimer = shieldCooldown;
+
+        if (PlayerHealth.Instance != null)
+            PlayerHealth.Instance.SetShielded(true);
+
+        if (shieldEffect != null)
+            shieldEffect.SetActive(true);
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlaySound("se_shield");
+
+        OnShieldStateChanged?.Invoke(true);
+        OnShieldCooldownChanged?.Invoke(0f);
+    }
+
+    private void DeactivateShield()
+    {
+        if (!isShieldActive) return;
+
+        isShieldActive = false;
+        shieldTimer = 0f;
+
+        if (PlayerHealth.Instance != null)
+            PlayerHealth.Instance.SetShielded(false);
+
+        if (shieldEffect != null)
+            shieldEffect.SetActive(false);
+
+        OnShieldStateChanged?.Invoke(false);
+    }
+
+    public int GetShieldManaCost() => shieldManaCost;
+    public bool IsShieldActive() => isShieldActive;
+    public bool IsShieldOnCooldown() => isShieldOnCooldown;
+    public float GetShieldCooldownRemaining() => isShieldOnCooldown ? shieldCooldownTimer : 0f;
+    public float GetShieldCooldownProgress() => !isShieldOnCooldown ? 0f : 1f - (shieldCooldownTimer / shieldCooldown);
+
+    public void ResetShieldSkill()
+    {
+        DeactivateShield();
+        isShieldOnCooldown = false;
+        shieldCooldownTimer = 0f;
+        OnShieldStateChanged?.Invoke(false);
+        OnShieldCooldownChanged?.Invoke(0f);
     }
 
     #endregion

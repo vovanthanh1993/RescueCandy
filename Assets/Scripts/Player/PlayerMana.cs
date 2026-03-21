@@ -21,9 +21,35 @@ public class PlayerMana : MonoBehaviour
         Instance = this;
     }
 
+    private int baseMaxMana;
+
+    private void Start()
+    {
+        baseMaxMana = maxMana;
+        ApplyBonusStats();
+    }
+
+    public void ApplyBonusStats()
+    {
+        int bonus = 0;
+        if (PlayerDataManager.Instance != null && PlayerDataManager.Instance.playerData != null)
+            bonus = PlayerDataManager.Instance.playerData.bonusMana;
+
+        maxMana = baseMaxMana + bonus;
+        currentMana = maxMana;
+        OnManaChanged?.Invoke(currentMana, maxMana);
+    }
+
+    public void AddMaxMana(int amount)
+    {
+        maxMana += amount;
+        currentMana = maxMana;
+        OnManaChanged?.Invoke(currentMana, maxMana);
+    }
+
     public void ResetMana()
     {
-        currentMana = 0;
+        currentMana = maxMana;
         OnManaChanged?.Invoke(currentMana, maxMana);
     }
 

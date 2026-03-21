@@ -14,14 +14,46 @@ public class PlayerCombat : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float slashVolume = 1f;
 
+    public static PlayerCombat Instance { get; private set; }
+
+    private int basePlayerDamage;
+
     private void Awake()
     {
+        Instance = this;
+        basePlayerDamage = playerDamage;
+
         if (weaponHitbox != null)
         {
             weaponHitbox.SetDamage(playerDamage);
             weaponHitbox.DisableHitbox();
         }
     }
+
+    private void Start()
+    {
+        ApplyBonusStats();
+    }
+
+    public void ApplyBonusStats()
+    {
+        int bonus = 0;
+        if (PlayerDataManager.Instance != null && PlayerDataManager.Instance.playerData != null)
+            bonus = PlayerDataManager.Instance.playerData.bonusDamage;
+
+        playerDamage = basePlayerDamage + bonus;
+        if (weaponHitbox != null)
+            weaponHitbox.SetDamage(playerDamage);
+    }
+
+    public void AddDamage(int amount)
+    {
+        playerDamage += amount;
+        if (weaponHitbox != null)
+            weaponHitbox.SetDamage(playerDamage);
+    }
+
+    public int GetPlayerDamage() => playerDamage;
 
     private void OnValidate()
     {

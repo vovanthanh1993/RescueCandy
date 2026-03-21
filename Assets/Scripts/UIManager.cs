@@ -20,6 +20,7 @@ public class UIManager : MonoBehaviour
 
     public SettingPanel settingPanel;
 
+    public GameObject upgradePanel;
 
     private void Awake()
     {
@@ -85,6 +86,8 @@ public class UIManager : MonoBehaviour
         homePanel.gameObject.SetActive(false);
         noticePanel.gameObject.SetActive(false);
         settingPanel.gameObject.SetActive(false);
+        if (upgradePanel != null)
+            upgradePanel.SetActive(false);
     }
     
     private void Update()
@@ -99,6 +102,18 @@ public class UIManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F2))
         {
             ResetAllLevels();
+        }
+
+        // Nhấn F3 để thêm 1000 vàng (cheat code)
+        if (Input.GetKeyDown(KeyCode.F3))
+        {
+            AddCheatGold();
+        }
+
+        // Nhấn F4 để reset chỉ số về ban đầu (cheat code)
+        if (Input.GetKeyDown(KeyCode.F4))
+        {
+            ResetUpgradeStats();
         }
     }
     
@@ -182,6 +197,49 @@ public class UIManager : MonoBehaviour
         }
         
         Debug.Log($"Cheat Code F2: {message}");
+    }
+
+    private void ResetUpgradeStats()
+    {
+        if (PlayerDataManager.Instance == null || PlayerDataManager.Instance.playerData == null) return;
+
+        PlayerDataManager.Instance.playerData.bonusHealth = 0;
+        PlayerDataManager.Instance.playerData.bonusMana = 0;
+        PlayerDataManager.Instance.playerData.bonusDamage = 0;
+        PlayerDataManager.Instance.Save();
+
+        if (PlayerHealth.Instance != null)
+            PlayerHealth.Instance.ApplyBonusStats();
+        if (PlayerMana.Instance != null)
+            PlayerMana.Instance.ApplyBonusStats();
+        if (PlayerCombat.Instance != null)
+            PlayerCombat.Instance.ApplyBonusStats();
+
+        if (noticePanel != null)
+            noticePanel.Init("All stats reset to default!");
+
+        Debug.Log("Cheat Code F4: All upgrade stats reset.");
+    }
+
+    private void AddCheatGold()
+    {
+        if (PlayerDataManager.Instance != null && PlayerDataManager.Instance.playerData != null)
+        {
+            PlayerDataManager.Instance.playerData.totalReward += 1000;
+            PlayerDataManager.Instance.Save();
+
+            if (noticePanel != null)
+                noticePanel.Init("+1000 Gold!\nTotal: " + PlayerDataManager.Instance.playerData.totalReward);
+
+            Debug.Log($"Cheat Code F3: +1000 Gold. Total: {PlayerDataManager.Instance.playerData.totalReward}");
+        }
+    }
+
+    public void ShowUpgradePanel(bool isShow) {
+        if (upgradePanel != null)
+        {
+            upgradePanel.SetActive(isShow);
+        }
     }
 
     public void ShowSettingPanel(bool isShow) {

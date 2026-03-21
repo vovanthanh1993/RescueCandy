@@ -10,8 +10,12 @@ public class PlayerManaFillUI : MonoBehaviour
     [Tooltip("Text hiển thị current/max Mana")]
     [SerializeField] private TextMeshProUGUI manaText;
 
+    [Tooltip("Tốc độ fill chuyển động mượt (càng lớn càng nhanh)")]
+    [SerializeField] private float fillSpeed = 5f;
+
     private PlayerMana playerMana;
     private bool isSubscribed = false;
+    private float targetFillAmount = 1f;
 
     private void Awake()
     {
@@ -81,10 +85,11 @@ public class PlayerManaFillUI : MonoBehaviour
 
     private void UpdateFill(int current, int max)
     {
+        targetFillAmount = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
+
         if (fillImage != null)
         {
-            float ratio = max <= 0 ? 0f : (float)current / max;
-            fillImage.fillAmount = Mathf.Clamp01(ratio);
+            fillImage.fillAmount = Mathf.MoveTowards(fillImage.fillAmount, targetFillAmount, fillSpeed * Time.deltaTime);
         }
 
         if (manaText != null)

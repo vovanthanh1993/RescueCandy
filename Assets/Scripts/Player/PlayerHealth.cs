@@ -29,9 +29,31 @@ public class PlayerHealth : MonoBehaviour
         hitFlash = GetComponentInChildren<PlayerHitFlash>();
     }
 
+    private int baseMaxHealth;
+
     private void Start()
     {
+        baseMaxHealth = maxHealth;
+        ApplyBonusStats();
         ResetHealth();
+    }
+
+    public void ApplyBonusStats()
+    {
+        int bonus = 0;
+        if (PlayerDataManager.Instance != null && PlayerDataManager.Instance.playerData != null)
+            bonus = PlayerDataManager.Instance.playerData.bonusHealth;
+
+        maxHealth = baseMaxHealth + bonus;
+        currentHealth = maxHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+    }
+
+    public void AddMaxHealth(int amount)
+    {
+        maxHealth += amount;
+        currentHealth = maxHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
     public void ResetHealth()
@@ -42,10 +64,20 @@ public class PlayerHealth : MonoBehaviour
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
+    private bool isShielded = false;
+
+    public bool IsShielded => isShielded;
+
+    public void SetShielded(bool shielded)
+    {
+        isShielded = shielded;
+    }
+
     public void TakeDamage(int damage)
     {
         if (damage <= 0) return;
         if (currentHealth <= 0) return;
+        if (isShielded) return;
 
         currentHealth = Mathf.Max(0, currentHealth - damage);
         OnHealthChanged?.Invoke(currentHealth, maxHealth);

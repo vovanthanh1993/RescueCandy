@@ -10,10 +10,14 @@ public class PlayerHealthFillUI : MonoBehaviour
     [Tooltip("Text hiển thị current/max HP")]
     [SerializeField] private TextMeshProUGUI healthText;
 
+    [Tooltip("Tốc độ fill chuyển động mượt (càng lớn càng nhanh)")]
+    [SerializeField] private float fillSpeed = 5f;
+
     [Tooltip("Nếu để trống sẽ dùng PlayerHealth.Instance")]
     [SerializeField] private PlayerHealth playerHealth;
 
     private bool isSubscribed = false;
+    private float targetFillAmount = 1f;
 
     private void Awake()
     {
@@ -86,10 +90,11 @@ public class PlayerHealthFillUI : MonoBehaviour
 
     private void UpdateFill(int current, int max)
     {
+        targetFillAmount = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
+
         if (fillImage != null)
         {
-            float ratio = max <= 0 ? 0f : (float)current / max;
-            fillImage.fillAmount = Mathf.Clamp01(ratio);
+            fillImage.fillAmount = Mathf.MoveTowards(fillImage.fillAmount, targetFillAmount, fillSpeed * Time.deltaTime);
         }
 
         if (healthText != null)
