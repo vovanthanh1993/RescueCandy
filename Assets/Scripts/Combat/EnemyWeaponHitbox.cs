@@ -69,23 +69,20 @@ public class EnemyWeaponHitbox : MonoBehaviour
     {
         if (!isActive) return;
         if (pendingDamage <= 0) return;
+        if (PlayerHealth.Instance == null) return;
 
         bool isPlayer = other.CompareTag("Player") || other.GetComponent<PlayerController>() != null;
         if (!isPlayer)
         {
             PlayerHealth ph = other.GetComponentInParent<PlayerHealth>();
             if (ph == null) return;
-            isPlayer = true;
         }
 
-        int id = other.gameObject.GetInstanceID();
+        int id = PlayerHealth.Instance.gameObject.GetInstanceID();
         if (hitTargetsThisSwing.Contains(id)) return;
         hitTargetsThisSwing.Add(id);
 
-        if (PlayerHealth.Instance != null)
-        {
-            PlayerHealth.Instance.TakeDamage(pendingDamage);
-        }
+        PlayerHealth.Instance.TakeDamage(pendingDamage);
 
         if (debugLog)
             Debug.Log($"EnemyWeaponHitbox[{name}] damaged Player for {pendingDamage}.");

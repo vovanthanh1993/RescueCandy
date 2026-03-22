@@ -6,10 +6,14 @@ public class EnemyHealthFillUI : MonoBehaviour
     [Tooltip("Image Fill (Image Type = Filled)")]
     [SerializeField] private Image fillImage;
 
+    [Tooltip("Tốc độ fill giảm/tăng mượt (càng lớn càng nhanh)")]
+    [SerializeField] private float fillSpeed = 5f;
+
     [Tooltip("Nếu để trống sẽ tự tìm EnemyHealth ở parent")]
     [SerializeField] private EnemyHealth enemyHealth;
 
     private bool isSubscribed = false;
+    private float targetFillAmount = 1f;
 
     private void Awake()
     {
@@ -74,9 +78,11 @@ public class EnemyHealthFillUI : MonoBehaviour
 
     private void UpdateFill(int current, int max)
     {
-        if (fillImage == null) return;
-        float ratio = max <= 0 ? 0f : (float)current / max;
-        fillImage.fillAmount = Mathf.Clamp01(ratio);
+        targetFillAmount = max <= 0 ? 0f : Mathf.Clamp01((float)current / max);
+
+        if (fillImage != null)
+        {
+            fillImage.fillAmount = Mathf.MoveTowards(fillImage.fillAmount, targetFillAmount, fillSpeed * Time.deltaTime);
+        }
     }
 }
-
