@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5175329944684832012}
   - component: {fileID: 1838129572487299610}
   - component: {fileID: 3386778869181761625}
+  - component: {fileID: 4393941222292782482}
   m_Layer: 0
   m_Name: 'GroundCheckPoint '
   m_TagString: Untagged
@@ -99,12 +100,26 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &4393941222292782482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4094223664038455878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 073928d3a66bc4d42a72c0ae99f1052a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pushSpeed: 6
+  player: {fileID: 4958909933091671111}
 --- !u!1001 &4635093606555737035
 PrefabInstance:
   m_ObjectHideFlags: 0

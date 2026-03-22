@@ -415,6 +415,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Đẩy ngang player (CharacterController). Dùng cho trigger trên enemy; <paramref name="horizontalWorldDelta"/> thường = hướng * speed * Time.deltaTime.
+    /// </summary>
+    public void ApplyHorizontalPushFromTrigger(Vector3 horizontalWorldDelta)
+    {
+        if (isGameOver || characterController == null || !characterController.enabled)
+            return;
+
+        horizontalWorldDelta.y = 0f;
+        if (horizontalWorldDelta.sqrMagnitude < 1e-10f)
+            return;
+
+        characterController.Move(horizontalWorldDelta);
+    }
+
     private void HandleMovement()
     {
         if (characterController == null || InputManager.Instance == null)
