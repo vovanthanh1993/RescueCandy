@@ -71,6 +71,10 @@ public class EnemyWeaponHitbox : MonoBehaviour
         if (pendingDamage <= 0) return;
         if (PlayerHealth.Instance == null) return;
 
+        EnemyHealth owner = GetComponentInParent<EnemyHealth>();
+        if (owner != null && (owner.IsDead || owner.CurrentHealth <= 0))
+            return;
+
         bool isPlayer = other.CompareTag("Player") || other.GetComponent<PlayerController>() != null;
         if (!isPlayer)
         {

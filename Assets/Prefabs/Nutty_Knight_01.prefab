@@ -282,6 +282,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fillImage: {fileID: 3862234542030537679}
+  fillSpeed: 5
   enemyHealth: {fileID: 3929542828814244222}
 --- !u!1001 &2985251842984820264
 PrefabInstance:
@@ -1157,7 +1158,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4069347634084055813, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7022101940555254402}
-    - targetCorrespondingSourceObject: {fileID: 7337540988426508675, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
+    - targetCorrespondingSourceObject: {fileID: -1662658257397774252, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6380527259599857295}
     m_AddedComponents:
@@ -1182,6 +1183,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -570834349669389780, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3115075024739163617}
+    - targetCorrespondingSourceObject: {fileID: -570834349669389780, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3939182946308627811}
   m_SourcePrefab: {fileID: 100100000, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
 --- !u!4 &1230754425054213421 stripped
 Transform:
@@ -1329,9 +1333,9 @@ MonoBehaviour:
   weaponHitbox: {fileID: 904740161316850053}
   attackSoundName: se_slash
   attackVolume: 0.2
---- !u!4 &5528608464256329643 stripped
+--- !u!4 &4719969925683164796 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 7337540988426508675, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
+  m_CorrespondingSourceObject: {fileID: -1662658257397774252, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
   m_PrefabInstance: {fileID: 2985251842984820264}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &5872205262247285764 stripped
@@ -1356,6 +1360,29 @@ MonoBehaviour:
   renderers: []
   baseColorProperty: _BaseColor
   colorProperty: _Color
+--- !u!136 &3939182946308627811
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5872205262247285764}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.92510515
+  m_Height: 2.3758311
+  m_Direction: 1
+  m_Center: {x: 0.030403785, y: 2.97, z: 0.04283326}
 --- !u!95 &8648928982507455417 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 340a68bd1707b05468c000577a99bcfc, type: 3}
@@ -1367,7 +1394,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 5528608464256329643}
+    m_TransformParent: {fileID: 4719969925683164796}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 2bbef83c42fda1a43bb3a1f78f443600, type: 3}
       propertyPath: m_LocalPosition.x

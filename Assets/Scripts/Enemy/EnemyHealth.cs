@@ -14,6 +14,7 @@ public class EnemyHealth : MonoBehaviour
 
     public int MaxHealth => maxHealth;
     public int CurrentHealth => currentHealth;
+    public bool IsDead => isDead;
     public System.Action<int, int> OnHealthChanged; // (current, max)
 
     private bool isDead = false;
@@ -73,6 +74,14 @@ public class EnemyHealth : MonoBehaviour
         // Tắt AI nếu có
         EnemyAI ai = GetComponent<EnemyAI>();
         if (ai != null) ai.enabled = false;
+
+        // Tắt vũ khí — không gây sát thương player sau khi chết
+        EnemyWeaponHitbox[] weaponHitboxes = GetComponentsInChildren<EnemyWeaponHitbox>(true);
+        for (int i = 0; i < weaponHitboxes.Length; i++)
+        {
+            if (weaponHitboxes[i] != null)
+                weaponHitboxes[i].DisableHitbox();
+        }
 
         // Xóa toàn bộ Rigidbody (cả con) để tránh physics tác động sau khi chết
         Rigidbody[] rbs = GetComponentsInChildren<Rigidbody>();

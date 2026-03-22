@@ -34,6 +34,10 @@ public class EnemyCombat : MonoBehaviour
     public void AnimationEvent_EnableWeaponHitbox()
     {
         if (weaponHitbox == null) return;
+        EnemyHealth health = GetComponent<EnemyHealth>();
+        if (health != null && (health.IsDead || health.CurrentHealth <= 0))
+            return;
+
         weaponHitbox.SetDamage(enemyDamage);
         weaponHitbox.EnableHitbox();
 

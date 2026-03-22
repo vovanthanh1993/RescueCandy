@@ -40,6 +40,9 @@ public static class GameCommonUtils
             yield return null;
         }
 
+        // Gameplay có thể để timeScale = 0 (chết, pause, panel...). Nếu không reset, UI/scene mới dùng deltaTime = 0 → ví dụ SelectLevelCamera không Lerp được.
+        Time.timeScale = 1f;
+
         UIManager.Instance.ShowLoadingPanel(false);
     }
 

@@ -34,6 +34,13 @@ public class CameraFollowController : MonoBehaviour
 
     private void LateUpdate()
     {
+        // Target không cùng scene (ví dụ camera load scene mới nhưng reference cũ) → bỏ follow
+        if (target != null && target.gameObject.scene != gameObject.scene)
+        {
+            target = null;
+            velocity = Vector3.zero;
+        }
+
         // Nếu chưa có target, tiếp tục tìm player (phòng trường hợp player spawn sau)
         if (target == null)
         {
