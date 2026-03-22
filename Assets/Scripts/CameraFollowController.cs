@@ -4,6 +4,7 @@ using UnityEngine;
 /// Camera Controller đơn giản để follow player
 /// Dựa trên Cinemachine Follow settings: Binding Mode World Space, Position Damping (1,1,1), Follow Offset (0,4,-4)
 /// </summary>
+[DefaultExecutionOrder(100)]
 public class CameraFollowController : MonoBehaviour
 {
     [Header("Follow Settings")]
@@ -24,7 +25,12 @@ public class CameraFollowController : MonoBehaviour
     [Tooltip("Offset từ player (X=0, Y=4, Z=-4)")]
     public Vector3 followOffset = new Vector3(0f, 7.13f, -7.71f);
 
+    [Header("Giảm giật (platform / physics)")]
+    [Tooltip("Khi Instant Follow bật: vẫn giữ X/Z khớp ngay, chỉ làm mượt trục Y của camera. Hữu ích khi player đứng trên vật di chuyển lên xuống (FixedUpdate vs Update lệch pha). 0 = tắt.")]
+    [SerializeField] private float verticalSmoothTime = 0.12f;
+
     private Vector3 velocity;
+    private float verticalSmoothVel;
 
     private void Start()
     {
@@ -65,8 +71,15 @@ public class CameraFollowController : MonoBehaviour
         // Follow ngay lập tức hoặc smooth với damping
         if (instantFollow)
         {
-            // Follow ngay lập tức, không có độ trễ
-            transform.position = desiredPosition;
+            if (verticalSmoothTime > 0.0001f)
+            {
+                float smoothY = Mathf.SmoothDamp(transform.position.y, desiredPosition.y, ref verticalSmoothVel, verticalSmoothTime, Mathf.Infinity, Time.deltaTime);
+                transform.position = new Vector3(desiredPosition.x, smoothY, desiredPosition.z);
+            }
+            else
+            {
+                transform.position = desiredPosition;
+            }
         }
         else
         {
@@ -97,6 +110,7 @@ public class CameraFollowController : MonoBehaviour
         {
             // Reset velocity khi đổi target
             velocity = Vector3.zero;
+            verticalSmoothVel = 0f;
         }
     }
 
